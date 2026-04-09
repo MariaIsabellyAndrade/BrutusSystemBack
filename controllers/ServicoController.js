@@ -77,12 +77,11 @@ class ServicoController{
             };
     
             if (req.file) {
-                dados.inputFoto = req.file.filename;
+                dados.foto = req.file.filename;
             }
     
-            await Servico.update(id, dados);
-    
-            //res.redirect('/clientes-list');
+        const servicoAtualizado = await Servico.update(id, dados);
+        return res.json(servicoAtualizado);
     
         } catch (error) {
             console.error(error);

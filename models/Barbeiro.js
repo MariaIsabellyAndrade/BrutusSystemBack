@@ -34,6 +34,18 @@ class Barbeiro{
         return await novoBarbeiro.save();
     }
 
+
+    static async countAll() {
+        return await BarbeiroModel.countDocuments();
+    }
+
+    static async countAtivos() {
+        return await BarbeiroModel.countDocuments({ ativo: true });
+    }
+
+    static async countInativos() {
+        return await BarbeiroModel.countDocuments({ ativo: false });
+    }
     
     static async findAll() {
         return await BarbeiroModel.find();

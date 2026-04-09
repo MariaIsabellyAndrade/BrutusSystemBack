@@ -4,6 +4,7 @@ import __dirname from '../utils/pathUtils.js';
 
 class BarbeiroController{
     static async createBarbeiro(req,res){
+    
         try{
                 const {
                     nome,
@@ -21,6 +22,7 @@ class BarbeiroController{
         const foto = req.file ? req.file.filename : null;
 
         if (barbeiroExistente) {
+    
             return res.status(400).json({ message: 'Barbeiro já cadastrado.' });
         }
 
@@ -44,13 +46,19 @@ class BarbeiroController{
 
         await novoBarbeiro.save();
 
+        console.log("entre 1")
         return res.status(201).json({
             message: 'Barbeiro cadastrado com sucesso'
         });
-       // return res.redirect('/clientes-list');
-
+   
         }catch(error){
-             console.error('Erro ao cadastrar barbeiro', error);
+            if (error.code === 11000) {
+              return res.status(400).json({
+                error: "CNPJ já cadastrado"
+              });
+            }
+
+            console.error('Erro ao cadastrar barbeiro', error);
             return res.status(500).send('Erro interno');
         }
     }
@@ -79,10 +87,9 @@ static async updateBarbeiro(req, res) {
     if (!dados.senha) {
         delete dados.senha;
     }
-    // 🔥 ATUALIZA
+
     await Barbeiro.update(id, dados);
 
-    // 🔥 BUSCA DE NOVO
     const barbeiroAtualizado = await Barbeiro.findById(id);
 
     return res.json(barbeiroAtualizado);

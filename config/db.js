@@ -10,7 +10,7 @@ class Database{
             //Usando variável do ambiente .env
             const uri = process.env.MONGODB_URI;
             await mongoose.connect(uri);
-            console.log('MongoDB conectado com sucesso!');
+            console.log('MongoDB conectado com sucesso!-----');
         } catch (error) {
             console.error('Erro ao conectar o MongoDB: ', error.message);
             process.exit(1); //Finaliza a aplicação

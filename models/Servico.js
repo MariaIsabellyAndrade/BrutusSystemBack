@@ -2,13 +2,13 @@ import ServicoModel from "./ServicoSchema.js";
 
 class Servico{
 
-    constructor(nome,descricao, valor,ativo,duracao, inputFoto){
+    constructor(nome,descricao, valor,ativo,duracao, foto){
         this.nome = nome; 
         this.descricao= descricao;
         this.valor = valor; 
         this.ativo = ativo; 
         this.duracao = duracao; 
-        this.inputFoto = inputFoto; 
+        this.foto = foto; 
     }
 
       async save(){
@@ -18,10 +18,23 @@ class Servico{
                 valor:this.valor,
                 ativo: this.ativo,
                 duracao: this.duracao,
-                inputFoto:this.inputFoto
+                foto:this.foto
             });
             return await novoServico.save();
         }
+
+
+            static async countAll() {
+                return await ServicoModel.countDocuments();
+            }
+        
+            static async countAtivos() {
+                return await ServicoModel.countDocuments({ ativo: true });
+            }
+        
+            static async countInativos() {
+                return await ServicoModel.countDocuments({ ativo: false });
+            }
 
         static async findAll() {
             return await ServicoModel.find();
