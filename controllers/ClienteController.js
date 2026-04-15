@@ -81,7 +81,7 @@ static async updateCliente(req, res) {
     const dados = { ...req.body };
 
     if (req.file) {
-      dados.inputFoto = req.file.filename;
+      dados.foto = req.file.filename;
     }
 
     if (!dados.senha) {
