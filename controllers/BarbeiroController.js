@@ -1,68 +1,78 @@
 import Barbeiro from "../models/Barbeiro.js";
 import path from 'path';
 import __dirname from '../utils/pathUtils.js';
-
+import bcrypt from "bcrypt";
+import Usuario from "../models/Usuario.js";
 class BarbeiroController{
-    static async createBarbeiro(req,res){
+static async createBarbeiro(req, res) {
+  let usuarioCriado = null;
+
+  try {
+    const {
+      nome,
+      sobrenome,
+      dataNascimento,
+      dataAdmissao,
+      email,
+      senha,
+      cnpj,
+      endereco,
+      ativo,
+      telefone
+    } = req.body;
+
+    const foto = req.file ? req.file.filename : null;
+
+            const barbeiroExistente = await Barbeiro.findByCnpj(cnpj);
+     
     
-        try{
-                const {
-                    nome,
-                    sobrenome, 
-                    dataNascimento,
-                    dataAdmissao,
-                    email,
-                    senha,
-                    cnpj,
-                    endereco,
-                    ativo ,
-                    telefone
-                    } = req.body;
-        const barbeiroExistente = await Barbeiro.findByCnpj(cnpj);
-        const foto = req.file ? req.file.filename : null;
-
-        if (barbeiroExistente) {
+            if (barbeiroExistente) {
+        
+                return res.status(400).json({ message: 'Barbeiro já cadastrado.' });
+            }
     
-            return res.status(400).json({ message: 'Barbeiro já cadastrado.' });
-        }
-
-        if (!foto) {
-            return res.status(400).json({ message: 'Foto é obrigatória.' });
-        }
-
-        const novoBarbeiro = new Barbeiro(
-                    nome,
-                    sobrenome, 
-                    dataNascimento,
-                    dataAdmissao,
-                    email,
-                    senha,
-                    cnpj,
-                    endereco,
-                    ativo ,
-                    telefone,
-                    foto
-        );
-
-        await novoBarbeiro.save();
-
-        console.log("entre 1")
-        return res.status(201).json({
-            message: 'Barbeiro cadastrado com sucesso'
-        });
-   
-        }catch(error){
-            if (error.code === 11000) {
-              return res.status(400).json({
-                error: "CNPJ já cadastrado"
-              });
+            if (!foto) {
+                return res.status(400).json({ message: 'Foto é obrigatória.' });
             }
 
-            console.error('Erro ao cadastrar barbeiro', error);
-            return res.status(500).send('Erro interno');
-        }
+    // 🔐 CRIAR USUARIO PRIMEIRO
+    const senhaHash = await bcrypt.hash(senha, 10);
+    console.log("ANTES DE CRIAR USUARIO");
+
+    usuarioCriado = await Usuario.create({
+      email,
+      senha: senhaHash,
+      tipo: "BARBEIRO"
+    });
+    console.log("USUARIO CRIADO:", usuarioCriado);
+
+    // 💈 CRIAR BARBEIRO
+    const novoBarbeiro = new Barbeiro(
+
+      
+    );
+
+
+
+    await novoBarbeiro.save();
+
+    return res.status(201).json({
+      message: "Barbeiro criado com sucesso"
+    });
+
+  } catch (error) {
+    console.error("Erro ao cadastrar barbeiro:", error);
+
+    // 🔥 rollback
+    if (usuarioCriado) {
+      await Usuario.delete(usuarioCriado._id);
     }
 
+    return res.status(500).json({
+      erro: error.message
+    });
+  }
+}
     static async getAllBarbeiro(req, res) {
         try {
             const barbeiro = await Barbeiro.findAll();

@@ -6,6 +6,16 @@ import ClienteController from '../controllers/ClienteController.js';
 import Barbeiro from '../models/Barbeiro.js';
 import Servico from '../models/Servico.js';
 import Cliente from '../models/Cliente.js';
+import {
+  registrarCliente,
+  registrarBarbeiro,
+  login
+} from "../controllers/AuthRegistrer.js";
+
+import {
+  authMiddleware,
+  isAdmin
+} from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
@@ -67,5 +77,12 @@ router.get("/clientes/resumo", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+
+router.post("/login", login);
+router.post("/registrar-cliente", registrarCliente);
+
+
+router.post("/registrar-barbeiro", authMiddleware, isAdmin, registrarBarbeiro);
 
 export default router;

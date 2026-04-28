@@ -2,20 +2,24 @@ import ClienteModel from "./ClienteSchema.js";
 
 class Cliente{
 
-    constructor(nome, sobrenome,  telefone, cpf, rg, endereco, email,senha,ativo, foto, dataNascimento){
+    constructor(nome, sobrenome,  telefone, cpf, rg, endereco,ativo, foto, dataNascimento, Usuario){
         this.nome = nome; 
         this.sobrenome = sobrenome; 
         this.telefone = telefone; 
         this.cpf = cpf; 
         this.rg = rg; 
         this.endereco = endereco; 
-        this.email = email;
-        this.senha = senha; 
         this.ativo = ativo; 
         this.foto = foto; 
         this.dataNascimento = dataNascimento; 
+        this.Usuario = Usuario; 
     }
 
+
+
+      static async create(dados) {
+        return await ClienteModel.create(dados);
+    }
         async save(){
             const novoCliente = new ClienteModel({
             nome: this.nome,
@@ -24,11 +28,10 @@ class Cliente{
             cpf: this.cpf,
             rg: this.rg,
             endereco: this.endereco,
-            email:this.email,
-            senha: this.senha,
             ativo:this.ativo ,
             foto:this.foto,
             dataNascimento:this.dataNascimento,
+            Usuario: this.Usuario
             });
             return await novoCliente.save();
         }

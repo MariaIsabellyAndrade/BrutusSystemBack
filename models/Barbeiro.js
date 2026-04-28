@@ -1,21 +1,27 @@
 import BarbeiroModel from "./BarbeiroSchema.js";
 
 class Barbeiro{
-    constructor(nome,sobrenome,dataNascimento,dataAdmissao,email,senha,cnpj,endereco,ativo, telefone, foto){
+    constructor(nome,sobrenome,dataNascimento,dataAdmissao,email,senha,cnpj,endereco,ativo, telefone, foto, Usuario){
         this.nome=nome; 
         this.sobrenome = sobrenome; 
         this.dataNascimento=dataNascimento;
         this.dataAdmissao=dataAdmissao; 
-        this.email=email; 
-        this.senha=senha;
         this.foto=foto;
         this.cnpj= cnpj;
         this.endereco=endereco; 
         this.ativo= ativo;
         this.telefone=telefone;
+        this.Usuario = Usuario; 
     }
 
 
+
+ static async create(dados, session = null) {
+  if (session) {
+    return await BarbeiroModel.create([dados], { session });
+  }
+  return await BarbeiroModel.create(dados);
+}
     
     async save(){
         const novoBarbeiro = new BarbeiroModel({
@@ -23,13 +29,12 @@ class Barbeiro{
         sobrenome:this.sobrenome, 
         dataNascimento:this.dataNascimento,
         dataAdmissao:this.dataAdmissao,
-        email:this.email,
-        senha: this.senha,
         cnpj: this.cnpj,
         endereco: this.endereco,
         ativo:this.ativo ,
         telefone:this.telefone,
          foto:this.foto,
+          Usuario: this.Usuario
         });
         return await novoBarbeiro.save();
     }

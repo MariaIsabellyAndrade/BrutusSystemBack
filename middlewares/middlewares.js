@@ -38,3 +38,11 @@ export {
     rateLimitMiddleware,
     morganMiddleware
 };
+
+//permisao do cadastro de usuarios como barbeiros 
+export const isAdmin = (req, res, next) => {
+  if (req.usuario?.tipo !== "ADMIN") {
+    return res.status(403).json({ erro: "Acesso negado" });
+  }
+  next();
+};
