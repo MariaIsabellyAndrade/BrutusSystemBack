@@ -12,7 +12,7 @@ const UsuarioSchema = new mongoose.Schema({
   },
   tipo: {
     type: String,
-    enum: ["CLIENTE", "BARBEIRO"],
+    enum: ["CLIENTE", "BARBEIRO","ADMIN"],
     required: true,
   },
   ativo: {

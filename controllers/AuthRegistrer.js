@@ -1,9 +1,9 @@
 import Usuario from "../models/Usuario.js";
 import Cliente from "../models/Cliente.js";
-import bcrypt from "bcrypt";
+
 import Barbeiro from "../models/Barbeiro.js";
 import jwt from "jsonwebtoken";
-
+import bcrypt from "bcrypt";
 export const registrarCliente = async (req, res) => {
   let usuarioCriado = null; // Escopo externo para permitir o rollback no catch
 
@@ -96,6 +96,32 @@ export const registrarBarbeiro = async (req, res) => {
     res.status(500).json({ erro: "Erro ao registrar: " + err.message });
   }
 };
+
+
+export const registrarAdmin = async (req, res) => {
+  try {
+    const { email, senha } = req.body;
+
+    const usuarioExistente = await Usuario.findOne({ email });
+
+    if (usuarioExistente) {
+      return res.status(400).json({ erro: "Email já cadastrado" });
+    }
+
+    const senhaHash = await bcrypt.hash(senha, 10);
+
+    const admin = await Usuario.create({
+      email,
+      senha: senhaHash,
+      tipo: "ADMIN",
+    });
+
+    res.status(201).json(admin);
+
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+};
 export const login = async (req, res) => {
   try {
     const { email, senha } = req.body;
@@ -129,3 +155,21 @@ export const login = async (req, res) => {
     res.status(500).json({ erro: "Erro no login" });
   }
 };
+
+export const getMe = async (req, res) => {
+  try {
+    const id = req.usuario.id; // 👈 CORRETO
+
+    const usuario = await Usuario.getByIdPublic(id);
+
+    if (!usuario) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    return res.json(usuario);
+
+  } catch (error) {
+    console.error("Erro ao buscar usuário:", error);
+    return res.status(500).json({ message: "Erro interno ao buscar usuário" });
+  }
+}

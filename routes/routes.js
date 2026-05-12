@@ -3,19 +3,24 @@ import BarbeiroController from '../controllers/BarbeiroController.js'
 import upload from "../config/multer.js";
 import ServicoController from '../controllers/ServicoController.js';
 import ClienteController from '../controllers/ClienteController.js';
+import AgendamentoController from '../controllers/AgendamentoController.js';
 import Barbeiro from '../models/Barbeiro.js';
 import Servico from '../models/Servico.js';
 import Cliente from '../models/Cliente.js';
 import {
   registrarCliente,
   registrarBarbeiro,
-  login
+  login, 
+  registrarAdmin,
+  getMe
 } from "../controllers/AuthRegistrer.js";
 
 import {
   authMiddleware,
   isAdmin
 } from "../middlewares/authMiddleware.js";
+
+import {authMiddleware2} from "../middlewares/middlewares.js"
 
 const router = express.Router();
 
@@ -80,9 +85,17 @@ router.get("/clientes/resumo", async (req, res) => {
 
 
 router.post("/login", login);
-router.post("/registrar-cliente", registrarCliente);
+router.post("/registrar-cliente",upload.single('foto'), registrarCliente);
+router.post("/registrar-admin",isAdmin,  registrarAdmin);
+router.get("/me",  authMiddleware, getMe );
 
 
 router.post("/registrar-barbeiro", authMiddleware, isAdmin, registrarBarbeiro);
+
+router.post(
+    "/agendar",
+    authMiddleware2,
+    AgendamentoController.cadastrar
+);
 
 export default router;

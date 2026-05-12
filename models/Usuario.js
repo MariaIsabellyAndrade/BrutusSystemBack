@@ -27,6 +27,10 @@ class Usuario{
     return await UsuarioModel.findById(id);
   }
 
+  static async getByIdPublic(id) {
+    return await UsuarioModel.findById(id).select("email tipo foto");
+  }
+
   static async create(dados) {
     return await UsuarioModel.create(dados);
   }

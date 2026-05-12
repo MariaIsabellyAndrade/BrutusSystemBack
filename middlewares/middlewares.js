@@ -27,7 +27,43 @@ const rateLimitMiddleware = rateLimit({
 const logFile = fs.createWriteStream(path.join(__dirname, 'access.log'), {flags:'a'});
 const morganMiddleware = morgan('combined', { stream: logFile});
 
+const authMiddleware2 = (req, res, next) => {
 
+    try {
+
+        const authHeader =
+            req.headers.authorization;
+
+        if (!authHeader) {
+
+            return res.status(401).json({
+                erro: "Token não informado"
+            });
+        }
+
+        // Bearer TOKEN
+        const token =
+            authHeader.split(" ")[1];
+
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET
+        );
+
+        // dados do usuário logado
+        req.usuarioId = decoded.id;
+
+        req.tipo = decoded.tipo;
+
+        next();
+
+    } catch (error) {
+
+        return res.status(401).json({
+            erro: "Token inválido"
+        });
+    }
+};
 
 export {
     staticMiddleware,
@@ -36,7 +72,8 @@ export {
     securityMiddleware,
     compressionMiddlewware,
     rateLimitMiddleware,
-    morganMiddleware
+    morganMiddleware, 
+    authMiddleware2
 };
 
 //permisao do cadastro de usuarios como barbeiros 

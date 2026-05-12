@@ -48,6 +48,18 @@ static async createBarbeiro(req, res) {
 
     // 💈 CRIAR BARBEIRO
     const novoBarbeiro = new Barbeiro(
+      nome,
+      sobrenome,
+      dataNascimento,
+      dataAdmissao,
+      email,
+      senha,
+      cnpj,
+      endereco,
+      ativo === "true",
+      telefone, 
+      foto, 
+      usuarioCriado._id
 
       
     );

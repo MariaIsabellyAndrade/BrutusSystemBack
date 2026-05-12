@@ -64,7 +64,7 @@ class Barbeiro{
         return await BarbeiroModel.findByIdAndUpdate(id, dadosAtualizados, { new: true });
     }
 
-        static async findByCnpj(cnpj) {
+    static async findByCnpj(cnpj) {
         return await BarbeiroModel.findOne({ cnpj: cnpj });
     }
     static async delete(id) 
