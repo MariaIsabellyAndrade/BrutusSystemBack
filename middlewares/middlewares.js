@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
+import jwt from "jsonwebtoken";
 
 
 //Middlewares

@@ -5,17 +5,17 @@ import Barbeiro from "../models/Barbeiro.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 export const registrarCliente = async (req, res) => {
-  let usuarioCriado = null; // Escopo externo para permitir o rollback no catch
+  let usuarioCriado = null;
 
   try {
     const { email, senha, ...dadosCliente } = req.body;
 
-    // 1. Validação de campos obrigatórios antes de tocar no banco
+
     if (!email || !senha) {
       return res.status(400).json({ erro: "Email e senha são obrigatórios" });
     }
 
-    // 2. Validação de email duplicado
+  
     const usuarioExistente = await Usuario.findOne({ email });
     if (usuarioExistente) {
       return res.status(400).json({ erro: "Email já cadastrado" });
@@ -122,6 +122,8 @@ export const registrarAdmin = async (req, res) => {
     res.status(500).json({ erro: err.message });
   }
 };
+
+
 export const login = async (req, res) => {
   try {
     const { email, senha } = req.body;
@@ -137,11 +139,15 @@ export const login = async (req, res) => {
     if (!senhaValida) {
       return res.status(400).json({ erro: "Senha inválida" });
     }
-
     const token = jwt.sign(
-      { id: usuario._id, tipo: usuario.tipo },
-      "segredo",
-      { expiresIn: "1d" }
+      {
+        id: usuario._id,
+        tipo: usuario.tipo,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1d",
+      }
     );
 
     res.json({

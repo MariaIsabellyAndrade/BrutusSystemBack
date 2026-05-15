@@ -3,14 +3,13 @@ import Cliente from "../models/Cliente.js";
 import Barbeiro from "../models/Barbeiro.js";
 
 class AgendamentoController {
-
 async cadastrar(req, res) {
 
     try {
 
         const {
-            Cliente,
-            Barbeiro,
+            Cliente: clienteBody,
+            Barbeiro: barbeiroBody,
             Servicos,
             data,
             hora
@@ -19,14 +18,10 @@ async cadastrar(req, res) {
         let clienteId;
         let barbeiroId;
 
-        // =====================================
-        // CLIENTE LOGADO
-        // =====================================
-
         if (req.tipo === "CLIENTE") {
 
             const clienteEncontrado =
-                await ClienteModel.findOne({
+                await Cliente.findOne({
                     Usuario: req.usuarioId
                 });
 
@@ -38,19 +33,12 @@ async cadastrar(req, res) {
             }
 
             clienteId = clienteEncontrado._id;
+            barbeiroId = barbeiroBody;
 
-            // barbeiro escolhido na tela
-            barbeiroId = Barbeiro;
         }
-
-        // =====================================
-        // BARBEIRO LOGADO
-        // =====================================
-
         else if (req.tipo === "BARBEIRO") {
-
             const barbeiroEncontrado =
-                await BarbeiroModel.findOne({
+                await Barbeiro.findOne({
                     Usuario: req.usuarioId
                 });
 
@@ -62,50 +50,40 @@ async cadastrar(req, res) {
             }
 
             barbeiroId = barbeiroEncontrado._id;
-
-            // cliente escolhido
-            clienteId = Cliente;
+            clienteId = clienteBody;
         }
 
-        console.log(req.tipo);
-console.log(req.usuarioId);
 
-console.log(clienteId);
-console.log(barbeiroId);
+        const horarioExistente =
+            await Agendamento.verificarHorario(
+                barbeiroId,
+                data,
+                hora
+            );
 
-        // =====================================
-        // CRIA OBJETO
-        // =====================================
+        if (horarioExistente) {
+
+            return res.status(400).json({
+                erro: "Já existe um agendamento para este horário"
+            });
+        }
 
         const novoAgendamento =
             new Agendamento(
-
                 req.usuarioId,
-
                 clienteId,
-
                 barbeiroId,
-
                 Servicos,
-
                 data,
-
                 hora,
-
                 "Agendado"
             );
-
-        // =====================================
-        // SALVA
-        // =====================================
 
         const resultado =
             await novoAgendamento.save();
 
         return res.status(201).json({
-
             mensagem: "Agendamento realizado",
-
             agendamento: resultado
         });
 
@@ -116,30 +94,7 @@ console.log(barbeiroId);
         });
     }
 }
-
-
-    async listar(req, res) {
-
-        try {
-
-            const agendamentos =
-                await Agendamento.find()
-
-                .populate("cliente")
-                .populate("barbeiro")
-                .populate("servicos");
-
-            return res.status(200).json(
-                agendamentos
-            );
-
-        } catch (error) {
-
-            return res.status(500).json({
-                erro: error.message
-            });
-        }
-    }
+   
 }
 
 export default new AgendamentoController();

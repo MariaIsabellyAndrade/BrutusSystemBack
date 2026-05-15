@@ -4,6 +4,7 @@ import __dirname from '../utils/pathUtils.js';
 import bcrypt from "bcrypt";
 import Usuario from "../models/Usuario.js";
 class BarbeiroController{
+
 static async createBarbeiro(req, res) {
   let usuarioCriado = null;
 
@@ -85,7 +86,7 @@ static async createBarbeiro(req, res) {
     });
   }
 }
-    static async getAllBarbeiro(req, res) {
+static async getAllBarbeiro(req, res) {
         try {
             const barbeiro = await Barbeiro.findAll();
             res.json(barbeiro);

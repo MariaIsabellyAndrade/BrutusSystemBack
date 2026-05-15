@@ -59,6 +59,10 @@ class Barbeiro{
     static async findById(id) {
         return await BarbeiroModel.findById(id);
     }
+    static async findOne(filtro) {
+        console.log(Barbeiro);
+        return await BarbeiroModel.findOne(filtro);
+    }
 
     static async update(id, dadosAtualizados) {
         return await BarbeiroModel.findByIdAndUpdate(id, dadosAtualizados, { new: true });

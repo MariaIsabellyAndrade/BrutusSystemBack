@@ -39,6 +39,11 @@ class Cliente{
         return await ClienteModel.countDocuments();
     }
 
+        static async findOne(filtro) {
+            console.log(Cliente);
+            return await ClienteModel.findOne(filtro);
+        }
+
     static async countAtivos() {
         return await ClienteModel.countDocuments({ ativo: true });
     }

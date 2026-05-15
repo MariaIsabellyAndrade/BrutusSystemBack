@@ -15,9 +15,10 @@ export const authMiddleware = (req, res, next) => {
     if (!token) {
       return res.status(401).json({ erro: "Token inválido" });
     }
-
-    // verifica token
-    const decoded = jwt.verify(token, "segredo");
+    const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET
+    );
 
     // 🔥 salva dados do usuário na requisição
     req.usuario = decoded;

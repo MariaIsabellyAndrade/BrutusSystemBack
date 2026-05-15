@@ -13,9 +13,6 @@ class Agendamento{
             this.status = status;
         }
 
-
-
-        
                 async save(){
                     const novoAgendamento = new AgendamentoModel({
                         Usuario: this.Usuario,
@@ -29,6 +26,17 @@ class Agendamento{
                     return await novoAgendamento.save();
                 }
     
+
+        static async verificarHorario(barbeiroId, data, hora) {
+
+            return await AgendamentoModel.findOne({
+                Barbeiro: barbeiroId,
+                data: data,
+                hora: hora,
+                status: "Agendado"
+            });
+        }
+
                 static async findAll() {
                     return await AgendamentoModel.find();
                 }
