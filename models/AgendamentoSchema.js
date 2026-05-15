@@ -18,20 +18,14 @@ const AgendamentoSchema = new mongoose.Schema(
             ref: "Barbeiro",
             required: true,
         },
-        Servicos: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Servico",
-                required: true,
-            }
-        ],
         data: { type: Date, required: true },
         hora: { type: String, required: true },
         status: {
             type: String,
-            enum: ["Agendado", "Concluido","Cancelado"],
+            enum: ["Agendado", "Concluido","Cancelado","PendentePagamento"],
             required: true,
-        }            
+        },
+        valorTotal: { type: Number, required: true,default:0  },           
     },
     { 
         timestamps: true,

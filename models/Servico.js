@@ -60,4 +60,25 @@ class Servico{
             return await ServicoModel.findByIdAndDelete(id);
         }
 
+
+    static async calcularValorTotal(servicos) {
+
+            let valorTotal = 0;
+
+            for (const idServico of servicos) {
+
+                const servicoEncontrado =
+                    await ServicoModel.findById(idServico);
+
+                if (!servicoEncontrado) {
+                    throw new Error("Serviço não encontrado");
+                }
+
+                valorTotal += servicoEncontrado.valor;
+            }
+
+            return valorTotal;
+    }
+
+
 } export default Servico; 

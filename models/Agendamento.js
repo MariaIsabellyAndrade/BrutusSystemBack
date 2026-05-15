@@ -3,14 +3,14 @@ import AgendamentoModel from "./AgendamentoSchema.js";
 
 class Agendamento{
 
-        constructor(Usuario, Cliente, Barbeiro, Servicos, data, hora, status){
+        constructor(Usuario, Cliente, Barbeiro, data, hora, status, valorTotal){
             this.Usuario = Usuario; 
             this.Cliente = Cliente; 
             this.Barbeiro = Barbeiro; 
-            this.Servicos = Servicos; 
             this.data = data;
             this.hora= hora; 
             this.status = status;
+            this.valorTotal = valorTotal;
         }
 
                 async save(){
@@ -18,10 +18,10 @@ class Agendamento{
                         Usuario: this.Usuario,
                         Cliente: this.Cliente,
                         Barbeiro: this.Barbeiro, 
-                        Servicos: this.Servicos, 
                         data: this.data, 
                         hora: this.hora, 
-                        status: this.status
+                        status: this.status,
+                        valorTotal: this.valorTotal
                     });
                     return await novoAgendamento.save();
                 }
@@ -54,5 +54,6 @@ class Agendamento{
                 {
                     return await AgendamentoModel.findByIdAndDelete(id);
                 }
+
 
 }export default Agendamento; 

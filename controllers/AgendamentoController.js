@@ -1,6 +1,8 @@
 import Agendamento from "../models/Agendamento.js";
 import Cliente from "../models/Cliente.js";
 import Barbeiro from "../models/Barbeiro.js";
+import Servico from "../models/Servico.js";
+import AgendaServ from "../models/AgendaServ.js";
 
 class AgendamentoController {
 async cadastrar(req, res) {
@@ -37,6 +39,7 @@ async cadastrar(req, res) {
 
         }
         else if (req.tipo === "BARBEIRO") {
+
             const barbeiroEncontrado =
                 await Barbeiro.findOne({
                     Usuario: req.usuarioId
@@ -53,7 +56,6 @@ async cadastrar(req, res) {
             clienteId = clienteBody;
         }
 
-
         const horarioExistente =
             await Agendamento.verificarHorario(
                 barbeiroId,
@@ -68,23 +70,52 @@ async cadastrar(req, res) {
             });
         }
 
+        const valorTotal =
+            await Servico.calcularValorTotal(
+                Servicos
+            );
+
         const novoAgendamento =
             new Agendamento(
+
                 req.usuarioId,
                 clienteId,
                 barbeiroId,
-                Servicos,
                 data,
                 hora,
-                "Agendado"
+                "Agendado",
+                valorTotal
+
             );
 
         const resultado =
             await novoAgendamento.save();
 
+        try {
+
+            await AgendaServ.vincularServicos(
+                resultado._id,
+                Servicos
+            );
+
+        } catch (error) {
+
+            await AgendaServ.deletarPorAgendamento(
+                resultado._id
+            );
+
+            await Agendamento.deletar(
+                resultado._id
+            );
+
+            throw error;
+        }
+
         return res.status(201).json({
+
             mensagem: "Agendamento realizado",
             agendamento: resultado
+
         });
 
     } catch (error) {
@@ -94,7 +125,6 @@ async cadastrar(req, res) {
         });
     }
 }
-   
 }
 
 export default new AgendamentoController();
