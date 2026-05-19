@@ -98,4 +98,9 @@ router.post(
     AgendamentoController.cadastrar
 );
 
+router.post(
+    "/webhook",
+    AgendamentoController.webhook
+);
+
 export default router;
