@@ -55,5 +55,20 @@ class Agendamento{
                     return await AgendamentoModel.findByIdAndDelete(id);
                 }
 
+                static async findPorBarbeiroEData(barbeiroId, data) {
 
+    const inicioDia = new Date(data);
+    inicioDia.setHours(0, 0, 0, 0);
+
+    const fimDia = new Date(data);
+    fimDia.setHours(23, 59, 59, 999);
+
+    return await AgendamentoModel.find({
+        Barbeiro: barbeiroId,
+        data: {
+            $gte: inicioDia,
+            $lte: fimDia
+        }
+    });
+}
 }export default Agendamento; 

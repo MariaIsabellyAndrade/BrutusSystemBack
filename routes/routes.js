@@ -54,9 +54,7 @@ router.get("/servicos/resumo", async (req, res) => {
     const total = await Servico.countAll();
     const ativos = await Servico.countAtivos();
     const inativos = await Servico.countInativos();
-
     res.json({ total, ativos, inativos });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
@@ -68,7 +66,6 @@ router.post('/clientes',upload.single('foto'), ClienteController.createCliente);
 router.get('/clientes', ClienteController.getAllCliente);
 router.put('/clientes/:id',upload.single('foto'), ClienteController.updateCliente);
 router.delete('/clientes/:id',ClienteController.deleteCliente);
-
 router.get("/clientes/resumo", async (req, res) => {
   try {
     const total = await Cliente.countAll();
@@ -98,6 +95,16 @@ router.post(
     AgendamentoController.cadastrar
 );
 
+router.delete(
+    "/agendar-excluir/:id",
+    authMiddleware2,
+    AgendamentoController.cancelarAgendamento
+);
+router.put(
+    "/agendar-reagendar/:id",
+    authMiddleware2,
+    AgendamentoController.reagendarAgendamento
+);
 router.post(
     "/webhook",
     AgendamentoController.webhook

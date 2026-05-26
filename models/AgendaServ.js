@@ -1,61 +1,68 @@
 import AgendaServModel from "./AgendaServSchema.js";
 import ServicoModel from "./ServicoSchema.js";
 
-class AgendaServ{
+class AgendaServ {
 
-
-    constructor(idServ, idAgendamento, valorCobrado){
-        this.idAgendamento = idAgendamento; 
-        this.idServ = idServ; 
-        this.valorCobrado = valorCobrado; 
+    constructor(idServ, idAgendamento, valorCobrado) {
+        this.idAgendamento = idAgendamento;
+        this.idServ = idServ;
+        this.valorCobrado = valorCobrado;
     }
 
-    async save(){
+    async save() {
         const novoAgendaServ = new AgendaServModel({
             Agendamento: this.idAgendamento,
             Servico: this.idServ,
             valorCobrado: this.valorCobrado
         });
+
         return await novoAgendaServ.save();
     }
 
-    static async deletarPorAgendamento(
-    agendamentoId
-){
 
-    await AgendaServModel.deleteMany({
-        Agendamento: agendamentoId
-    });
-}
+    static async buscarServicosDoAgendamento(agendamentoId) {
+        return await AgendaServModel
+            .find({ Agendamento: agendamentoId })
+            .populate("Servico");
+    }
 
+    static async calcularDuracaoAgendamento(agendamentoId) {
 
+        const servicosAgendamento =
+            await this.buscarServicosDoAgendamento(agendamentoId);
 
+        return servicosAgendamento.reduce((total, item) => {
+            return total + Number(item.Servico?.duracao || 0);
+        }, 0);
+    }
 
-static async vincularServicos(
-    agendamentoId,
-    servicos
-) {
+    static async deletarPorAgendamento(agendamentoId) {
+        await AgendaServModel.deleteMany({
+            Agendamento: agendamentoId
+        });
+    }
 
-    for (const idServico of servicos) {
+    static async vincularServicos(agendamentoId, servicos) {
 
-        const servicoEncontrado =
-            await ServicoModel.findById(idServico);
+        for (const idServico of servicos) {
 
-        if (!servicoEncontrado) {
-            throw new Error("Serviço não encontrado");
+            const servicoEncontrado =
+                await ServicoModel.findById(idServico);
+
+            if (!servicoEncontrado) {
+                throw new Error("Serviço não encontrado");
+            }
+
+            const agendaServico =
+                new AgendaServ(
+                    servicoEncontrado._id,
+                    agendamentoId,
+                    servicoEncontrado.valor
+                );
+
+            await agendaServico.save();
         }
-
-        const agendaServico =
-            new AgendaServ(
-
-                servicoEncontrado._id,
-                agendamentoId,
-                servicoEncontrado.valor
-
-            );
-
-        await agendaServico.save();
     }
 }
 
-}export default AgendaServ; 
+export default AgendaServ;

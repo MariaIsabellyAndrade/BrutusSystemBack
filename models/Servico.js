@@ -43,7 +43,11 @@ class Servico{
         static async findById(id) {
             return await ServicoModel.findById(id);
         }
-    
+        static async buscarPorIds(ids) {
+            return await ServicoModel.find({
+                _id: { $in: ids }
+            });
+        }
 
         static async findOneByProcura(nome, valor) {
             return await ServicoModel.findOne({

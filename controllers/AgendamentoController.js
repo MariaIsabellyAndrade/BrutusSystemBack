@@ -1,8 +1,10 @@
 import AgendamentoService from "../services/AgendamentoService.js";
 
 class AgendamentoController {
-    async cadastrar(req, res) {
+
+    static async cadastrar(req, res) {
         try {
+
             const {
                 Cliente: clienteBody,
                 Barbeiro: barbeiroBody,
@@ -11,7 +13,6 @@ class AgendamentoController {
                 hora
             } = req.body;
 
-            // Chama o serviço passando os parâmetros estruturados
             const resultado = await AgendamentoService.criarAgendamento({
                 usuarioId: req.usuarioId,
                 tipoUsuario: req.tipo,
@@ -28,33 +29,86 @@ class AgendamentoController {
             });
 
         } catch (error) {
+
             console.error(error);
-            // Se o erro foi lançado com um status customizado no Service, usa ele. Caso contrário, 500.
+
             const status = error.status || 500;
+
             return res.status(status).json({
                 erro: error.message || "Erro interno do servidor"
             });
         }
     }
 
-    async webhook(req, res) {
+    static async webhook(req, res) {
         try {
+
             console.log(req.body);
+
             const paymentId = req.body?.data?.id;
 
             await AgendamentoService.processarWebhook(paymentId);
 
-            // Webhooks do Mercado Pago precisam retornar status 200 rápido para evitar retentativas
             return res.sendStatus(200);
 
         } catch (error) {
+
             console.error(error);
+
             const status = error.status || 500;
+
             return res.status(status).json({
-                erro: error.message || "Erro ao processar o webhook"
+                erro: error.message || "Erro ao processar webhook"
             });
         }
     }
+
+    static async cancelarAgendamento(req, res) {
+        //devolver pix 
+        try {
+            const { id } = req.params;
+            const resultado = await AgendamentoService.cancelarAgendamento(id);
+            return res.status(200).json(resultado);
+
+        } catch (error) {
+
+            console.error(error);
+
+            return res.status(error.status || 500).json({
+                message: error.message || "Erro ao cancelar agendamento"
+            });
+        }
+    }
+
+    static async reagendarAgendamento(req, res) {
+
+    try {
+
+        const { id } = req.params;
+
+        const { data, hora } = req.body;
+
+        const resultado =
+            await AgendamentoService.reagendarAgendamento(
+                id,
+                data,
+                hora
+            );
+
+        return res.status(200).json(resultado);
+
+    } catch (error) {
+
+        console.error(error);
+
+        return res.status(error.status || 500).json({
+            message:
+                error.message ||
+                "Erro ao reagendar agendamento"
+        });
+    }
 }
 
-export default new AgendamentoController();
+}
+
+export default AgendamentoController;
