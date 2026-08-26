@@ -41,21 +41,65 @@ class AuthService {
         }
     }
 
-    async login(email, senha) {
-        const usuario = await Usuario.findOne({ email });
-        if (!usuario) throw { status: 400, message: "Usuário não encontrado" };
+async login(email, senha) {
+    const usuario = await Usuario.findOne({ email });
 
-        const senhaValida = await bcrypt.compare(senha, usuario.senha);
-        if (!senhaValida) throw { status: 400, message: "Senha inválida" };
-
-        const token = jwt.sign(
-            { id: usuario._id, tipo: usuario.tipo },
-            process.env.JWT_SECRET,
-            { expiresIn: "1d" }
-        );
-
-        return { token, tipo: usuario.tipo, email: usuario.email };
+    if (!usuario) {
+        throw {
+            status: 400,
+            message: "Usuário não encontrado"
+        };
     }
+
+    const senhaValida = await bcrypt.compare(senha, usuario.senha);
+
+    if (!senhaValida) {
+        throw {
+            status: 400,
+            message: "Senha inválida"
+        };
+    }
+
+    let entidadeId = null;
+
+    if (usuario.tipo === "CLIENTE") {
+        const cliente = await Cliente.findOne({
+            Usuario: usuario._id
+        });
+
+        if (cliente) {
+            entidadeId = cliente._id;
+        }
+    }
+
+    if (usuario.tipo === "BARBEIRO") {
+        const barbeiro = await Barbeiro.findOne({
+            Usuario: usuario._id
+        });
+
+        if (barbeiro) {
+            entidadeId = barbeiro._id;
+        }
+    }
+
+    const token = jwt.sign(
+        {
+            id: usuario._id,
+            tipo: usuario.tipo
+        },
+        process.env.JWT_SECRET,
+        {
+            expiresIn: "1d"
+        }
+    );
+
+    return {
+        token,
+        tipo: usuario.tipo,
+        email: usuario.email,
+        entidadeId
+    };
+}
 }
 
 export default new AuthService(); 

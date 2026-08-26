@@ -3,7 +3,8 @@ import Usuario from "../models/Usuario.js";
 
 export const registrarCliente = async (req, res) => {
     try {
-        const resultado = await AuthService.registrarCliente(req.body);
+        const foto = req.file ? req.file.filename : null;
+        const resultado = await AuthService.registrarCliente({ ...req.body, foto });
         return res.status(201).json(resultado);
     } catch (err) {
         return res.status(err.status || 500).json({ erro: err.message });

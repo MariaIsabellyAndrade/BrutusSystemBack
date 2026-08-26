@@ -22,7 +22,7 @@ const AgendamentoSchema = new mongoose.Schema(
         hora: { type: String, required: true },
         status: {
             type: String,
-            enum: ["Agendado", "Concluido","CANCELADO","Pendente"],
+            enum: ["CONFIRMADO","CANCELADO","PENDENTE"],
             required: true,
         },
         valorTotal: { type: Number, required: true,default:0  },           

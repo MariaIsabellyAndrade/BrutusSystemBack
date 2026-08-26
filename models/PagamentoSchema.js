@@ -8,10 +8,10 @@ const PagamentoSchema = new mongoose.Schema(
             ref: "Agendamento",
             required: true,
         },
-        status: { type: String, required: true,default: "pending" },
+        status: { type: String, required: true, default: "pending" },
         qrCode: { type: String, required: true },
         valor: { type: Number},
-        paymentId: { type: Date, required: true,unique: true },
+        paymentId: { type: String, required: true,unique: true },
         dataPagamento: { type: Date }
     },
     { 

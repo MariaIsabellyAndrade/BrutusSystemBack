@@ -2,6 +2,61 @@ import AgendamentoService from "../services/AgendamentoService.js";
 
 class AgendamentoController {
 
+
+
+
+    static async horariosDisponiveis(req, res) {
+
+    try {
+
+        const {
+            barbeiroId,
+            data
+        } = req.params;
+
+        const {
+            servicos
+        } = req.query;
+
+        let servicosIds = [];
+
+        if (servicos) {
+
+            servicosIds =
+                servicos.split(",");
+        }
+
+        const horarios =
+            await AgendamentoService.buscarHorariosDisponiveis(
+                barbeiroId,
+                data,
+                servicosIds
+            );
+
+        return res.status(200).json({
+            barbeiroId,
+            data,
+            horarios
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao buscar horários disponíveis:",
+            error
+        );
+
+        return res.status(
+            error.status || 500
+        ).json({
+            erro:
+                error.message ||
+                "Erro ao buscar horários disponíveis"
+        });
+    }
+}
+
+
     static async cadastrar(req, res) {
         try {
 
@@ -13,15 +68,15 @@ class AgendamentoController {
                 hora
             } = req.body;
 
-            const resultado = await AgendamentoService.criarAgendamento({
-                usuarioId: req.usuarioId,
-                tipoUsuario: req.tipo,
-                clienteBody,
-                barbeiroBody,
-                servicos: Servicos,
-                data,
-                hora
-            });
+        const resultado = await AgendamentoService.criarAgendamento({
+            usuarioId: req.usuario.id,
+            tipoUsuario: req.usuario.tipo,
+            clienteBody,
+            barbeiroBody,
+            servicos: Servicos,
+            data,
+            hora
+        });
 
             return res.status(201).json({
                 mensagem: "Agendamento criado. Realize o pagamento.",
@@ -41,27 +96,62 @@ class AgendamentoController {
     }
 
     static async webhook(req, res) {
-        try {
 
-            console.log(req.body);
+    try {
 
-            const paymentId = req.body?.data?.id;
+        console.log("========== WEBHOOK MERCADO PAGO ==========");
 
-            await AgendamentoService.processarWebhook(paymentId);
+        console.log("BODY:", req.body);
+        console.log("QUERY:", req.query);
+
+        const paymentId =
+            req.body?.data?.id ||
+            req.body?.id ||
+            req.query?.["data.id"] ||
+            req.query?.id;
+
+        console.log(
+            "PAYMENT ID RECEBIDO:",
+            paymentId
+        );
+
+        if (!paymentId) {
+
+            console.log(
+                "Webhook recebido sem paymentId"
+            );
 
             return res.sendStatus(200);
-
-        } catch (error) {
-
-            console.error(error);
-
-            const status = error.status || 500;
-
-            return res.status(status).json({
-                erro: error.message || "Erro ao processar webhook"
-            });
         }
+
+        await AgendamentoService.processarWebhook(
+            paymentId.toString()
+        );
+
+        console.log(
+            "WEBHOOK PROCESSADO COM SUCESSO"
+        );
+
+        return res.sendStatus(200);
+
+    } catch (error) {
+
+        console.error(
+            "ERRO NO WEBHOOK:",
+            error
+        );
+
+        return res.status(
+            error.status || 500
+        ).json({
+            erro:
+                error.message ||
+                "Erro ao processar webhook"
+        });
     }
+}
+
+
 
     static async cancelarAgendamento(req, res) {
         //devolver pix 
@@ -108,6 +198,31 @@ class AgendamentoController {
         });
     }
 }
+
+static async listarAgendamentos(req, res) {
+    try {
+
+        const agendamentos =
+            await AgendamentoService.listarAgendamentos();
+
+        return res.status(200).json(agendamentos);
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao listar agendamentos:",
+            error
+        );
+
+        return res.status(error.status || 500).json({
+            erro:
+                error.message ||
+                "Erro ao listar agendamentos"
+        });
+    }
+}
+
+
 
 }
 

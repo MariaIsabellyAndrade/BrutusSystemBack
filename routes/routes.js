@@ -17,17 +17,18 @@ import {
 
 import {
   authMiddleware,
-  isAdmin
+  isAdmin, 
+  isBarbeiro
 } from "../middlewares/authMiddleware.js";
 
-import {authMiddleware2} from "../middlewares/middlewares.js"
+
 
 const router = express.Router();
 
-router.post('/barbeiros',upload.single('foto'), BarbeiroController.createBarbeiro);
+router.post('/barbeiros', authMiddleware, isAdmin,upload.single('foto'), BarbeiroController.createBarbeiro);
 router.get('/barbeiros', BarbeiroController.getAllBarbeiro);
-router.put('/barbeiros/:id',upload.single('foto'), BarbeiroController.updateBarbeiro);
-router.delete('/barbeiros/:id',BarbeiroController.deleteBarbeiro);
+router.put('/barbeiros/:id', authMiddleware, isAdmin,upload.single('foto'), BarbeiroController.updateBarbeiro);
+router.delete('/barbeiros/:id',authMiddleware, isAdmin,BarbeiroController.deleteBarbeiro);
 
 router.get("/barbeiros/resumo", async (req, res) => {
   try {
@@ -83,7 +84,7 @@ router.get("/clientes/resumo", async (req, res) => {
 
 router.post("/login", login);
 router.post("/registrar-cliente",upload.single('foto'), registrarCliente);
-router.post("/registrar-admin",isAdmin,  registrarAdmin);
+router.post("/registrar-admin",authMiddleware,isAdmin,  registrarAdmin);
 router.get("/me",  authMiddleware, getMe );
 
 
@@ -91,23 +92,33 @@ router.post("/registrar-barbeiro", authMiddleware, isAdmin, registrarBarbeiro);
 
 router.post(
     "/agendar",
-    authMiddleware2,
+    authMiddleware,
     AgendamentoController.cadastrar
 );
 
 router.delete(
     "/agendar-excluir/:id",
-    authMiddleware2,
+    authMiddleware,
     AgendamentoController.cancelarAgendamento
 );
 router.put(
     "/agendar-reagendar/:id",
-    authMiddleware2,
+    authMiddleware,
     AgendamentoController.reagendarAgendamento
 );
 router.post(
     "/webhook",
     AgendamentoController.webhook
+);
+
+router.get(
+    "/horarios-disponiveis/:barbeiroId/:data",
+    AgendamentoController.horariosDisponiveis
+);
+
+router.get(
+    "/agendamentos",
+    AgendamentoController.listarAgendamentos
 );
 
 export default router;
