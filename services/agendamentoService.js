@@ -6,7 +6,8 @@ import AgendaServ from "../models/AgendaServ.js";
 import Pagamento from "../models/Pagamento.js";
 import Usuario from "../models/Usuario.js";
 import client from "../config/mercadoPago.js";
-import { Payment } from "mercadopago";
+import pkg from "mercadopago";
+const { Payment } = pkg;
 
 class AgendamentoService {
 
@@ -497,7 +498,7 @@ for (const agendamento of agendamentosDia) {
             barbeiroId,
             data,
             hora,
-            "Pendente",
+            "PENDENTE",
             valorTotal
         );
 
@@ -558,129 +559,175 @@ for (const agendamento of agendamentosDia) {
         }
     };
 }
-async cancelarAgendamento(agendamentoId) {
-    const agendamento = await Agendamento.findById(agendamentoId);
+async cancelarAgendamento(id) {
+    try {
+        console.log("========================================");
+        console.log("CANCELAMENTO DE AGENDAMENTO");
+        console.log("AGENDAMENTO ID:", id);
+        console.log("========================================");
 
-    if (!agendamento) {
-        throw {
-            status: 404,
-            message: "Agendamento não encontrado"
-        };
-    }
+        // 1. Busca o agendamento
+        const agendamento = await Agendamento.findById(id);
 
-    const dataAgendamento = new Date(agendamento.data);
-    const [hora, minuto] = agendamento.hora.split(":");
+        if (!agendamento) {
+            throw {
+                status: 404,
+                message: "Agendamento não encontrado"
+            };
+        }
 
-    dataAgendamento.setHours(parseInt(hora));
-    dataAgendamento.setMinutes(parseInt(minuto));
-    dataAgendamento.setSeconds(0);
-    dataAgendamento.setMilliseconds(0);
+        console.log("AGENDAMENTO ENCONTRADO:", true);
+        console.log("STATUS ATUAL:", agendamento.status);
+        console.log("VALOR TOTAL:", agendamento.valorTotal);
 
-    const agora = new Date();
+        // 2. Verifica se já está cancelado
+        if (agendamento.status === "CANCELADO") {
+            throw {
+                status: 400,
+                message: "Este agendamento já está cancelado"
+            };
+        }
 
-    const diferencaMs =
-        dataAgendamento.getTime() - agora.getTime();
+        // 3. Busca o pagamento relacionado ao agendamento
+        const pagamento = await Pagamento.findOne({
+            Agendamento: agendamento._id
+        });
 
-    const diferencaHoras =
-        diferencaMs / (1000 * 60 * 60);
+        console.log("========== PAGAMENTO ==========");
+        console.log("PAGAMENTO ENCONTRADO:", !!pagamento);
 
-    console.log("HORAS RESTANTES:", diferencaHoras);
+        if (pagamento) {
+            console.log("ID PAGAMENTO BANCO:", pagamento._id);
+            console.log("PAYMENT ID MERCADO PAGO:", pagamento.paymentId);
+            console.log("STATUS PAGAMENTO:", pagamento.status);
+            console.log("VALOR PAGAMENTO:", pagamento.valor);
+        }
 
-    if (diferencaHoras < 24) {
-        throw {
-            status: 400,
-            message:
-                "Não é possível cancelar com menos de 24 horas de antecedência"
-        };
-    }
+        console.log("===============================");
 
-    const pagamento = await Pagamento.findOne({
-        Agendamento: agendamento._id
-    });
+        if (!pagamento) {
+            throw {
+                status: 404,
+                message:
+                    "Pagamento relacionado ao agendamento não encontrado"
+            };
+        }
 
-    if (!pagamento) {
-        throw {
-            status: 404,
-            message: "Pagamento não encontrado"
-        };
-    }
+        // 4. O pagamento precisa estar aprovado
+        if (pagamento.status !== "approved") {
+            throw {
+                status: 400,
+                message:
+                    `Não é possível reembolsar um pagamento com status "${pagamento.status}"`
+            };
+        }
 
-    console.log("========== PAGAMENTO ==========");
-    console.log("ID INTERNO:", pagamento._id);
-    console.log("STATUS BANCO:", pagamento.status);
-    console.log("PAYMENT ID MP:", pagamento.paymentId);
-    console.log("===============================");
+        // 5. Verifica o paymentId
+        if (!pagamento.paymentId) {
+            throw {
+                status: 400,
+                message:
+                    "Pagamento não possui paymentId do Mercado Pago"
+            };
+        }
 
-    if (!pagamento.paymentId) {
-        throw {
-            status: 400,
-            message: "Pagamento não possui ID do Mercado Pago"
-        };
-    }
+        // 6. Verifica o valor
+        if (!pagamento.valor || pagamento.valor <= 0) {
+            throw {
+                status: 400,
+                message:
+                    "Pagamento não possui um valor válido para reembolso"
+            };
+        }
 
-    const payment = new Payment(client);
+        console.log("========================================");
+        console.log("INICIANDO REEMBOLSO");
+        console.log("PAYMENT ID:", pagamento.paymentId);
+        console.log("VALOR A DEVOLVER:", pagamento.valor);
+        console.log("========================================");
 
-    // Busca o pagamento diretamente no Mercado Pago
-    const pagamentoMP = await payment.get({
-        id: pagamento.paymentId
-    });
-
-    console.log("STATUS MERCADO PAGO:", pagamentoMP.status);
-
-    if (pagamentoMP.status !== "approved") {
-        throw {
-            status: 400,
-            message:
-                `O pagamento não está aprovado no Mercado Pago. Status atual: ${pagamentoMP.status}`
-        };
-    }
-
-console.log(
-    "REALIZANDO REFUND DO PIX:",
-    pagamento.paymentId
-);
-
-const refundResponse = await fetch(
+const response = await fetch(
     `https://api.mercadopago.com/v1/payments/${pagamento.paymentId}/refunds`,
     {
         method: "POST",
         headers: {
             "Authorization": `Bearer ${process.env.MP_ACCESS_TOKEN}`,
             "Content-Type": "application/json",
-            "X-Idempotency-Key": `refund-${pagamento.paymentId}-${Date.now()}`,
-            "X-Render-In-Process-Refunds": "true"
-        }
+            "X-Idempotency-Key": `refund-${pagamento.paymentId}`
+        },
+        body: JSON.stringify({
+            amount: pagamento.valor
+        })
     }
 );
 
-const refund = await refundResponse.json();
+const resultadoRefund = await response.json();
 
-console.log("RESPOSTA DO REFUND:", refund);
+console.log("========== RETORNO REEMBOLSO ==========");
+console.log("STATUS HTTP:", response.status);
+console.log(resultadoRefund);
+console.log("=======================================");
 
-if (!refundResponse.ok) {
-    console.error("ERRO NO REFUND:", refund);
-
+if (!response.ok) {
     throw {
-        status: 400,
+        status: response.status,
         message:
-            refund.message ||
-            "Não foi possível realizar o reembolso do pagamento"
+            resultadoRefund?.message ||
+            "Erro ao realizar reembolso no Mercado Pago",
+        detalhes: resultadoRefund
     };
 }
 
-    pagamento.status = "refunded";
-    await pagamento.save();
+        console.log("========== RETORNO REEMBOLSO ==========");
+        console.log(resultadoRefund);
+        console.log("=======================================");
 
-    agendamento.status = "CANCELADO";
-    await agendamento.save();
+        // 8. Atualiza o pagamento somente depois
+        // que o Mercado Pago confirmou o reembolso
+        pagamento.status = "refunded";
 
-    return {
-        message: "Agendamento cancelado e PIX devolvido",
-        pagamento: {
-            paymentId: pagamento.paymentId,
-            status: "refunded"
-        }
-    };
+        await pagamento.save();
+
+        console.log("PAGAMENTO ATUALIZADO:", pagamento.status);
+
+        // 9. Atualiza o agendamento
+        agendamento.status = "CANCELADO";
+
+        await agendamento.save();
+
+        console.log("AGENDAMENTO ATUALIZADO:", agendamento.status);
+
+        console.log("========================================");
+        console.log("CANCELAMENTO + REEMBOLSO CONCLUÍDOS");
+        console.log("========================================");
+
+        return {
+            mensagem:
+                "Agendamento cancelado e pagamento reembolsado com sucesso",
+
+            agendamento: {
+                id: agendamento._id,
+                status: agendamento.status
+            },
+
+            pagamento: {
+                id: pagamento._id,
+                paymentId: pagamento.paymentId,
+                status: pagamento.status,
+                valor: pagamento.valor
+            },
+
+            reembolso: resultadoRefund
+        };
+
+    } catch (error) {
+        console.error("========================================");
+        console.error("ERRO AO CANCELAR AGENDAMENTO");
+        console.error(error);
+        console.error("========================================");
+
+        throw error;
+    }
 }
 
 validarHorarioFuncionamento(data, hora, duracaoTotal = 0) {
@@ -706,9 +753,6 @@ validarHorarioFuncionamento(data, hora, duracaoTotal = 0) {
 
     const agora = new Date();
 
-    // ==========================================
-    // DATA/HORA JÁ PASSOU
-    // ==========================================
 
     if (dataHorario < agora) {
         throw {
@@ -720,9 +764,7 @@ validarHorarioFuncionamento(data, hora, duracaoTotal = 0) {
 
     const diaSemana = dataHorario.getDay();
 
-    // ==========================================
-    // DOMINGO
-    // ==========================================
+
 
     if (diaSemana === 0) {
         throw {
@@ -732,9 +774,7 @@ validarHorarioFuncionamento(data, hora, duracaoTotal = 0) {
         };
     }
 
-    // ==========================================
-    // CALCULA FIM DO SERVIÇO
-    // ==========================================
+
 
     const fimAgendamento =
         new Date(dataHorario);
@@ -744,9 +784,7 @@ validarHorarioFuncionamento(data, hora, duracaoTotal = 0) {
         Number(duracaoTotal)
     );
 
-    // ==========================================
-    // SÁBADO
-    // ==========================================
+
 
     if (diaSemana === 6) {
 
@@ -771,9 +809,7 @@ validarHorarioFuncionamento(data, hora, duracaoTotal = 0) {
         return;
     }
 
-    // ==========================================
-    // SEGUNDA A SEXTA
-    // ==========================================
+
 
     const limiteSemana =
         new Date(dataHorario);
@@ -891,8 +927,11 @@ async reagendarAgendamento(
     };
 }
 async processarWebhook(paymentId) {
-
     try {
+
+        // ==========================================
+        // VALIDA PAYMENT ID
+        // ==========================================
 
         if (!paymentId) {
             throw {
@@ -901,9 +940,11 @@ async processarWebhook(paymentId) {
             };
         }
 
+        const paymentIdString = paymentId.toString();
+
         console.log("========================================");
         console.log("PROCESSANDO WEBHOOK");
-        console.log("PAYMENT ID RECEBIDO:", paymentId);
+        console.log("PAYMENT ID RECEBIDO:", paymentIdString);
         console.log("========================================");
 
 
@@ -913,33 +954,103 @@ async processarWebhook(paymentId) {
 
         const payment = new Payment(client);
 
-        const pagamentoMP = await payment.get({
-            id: paymentId.toString()
+        const pagamentoMPResponse = await payment.get({
+            id: paymentIdString
         });
 
+        // Dependendo da versão do SDK,
+        // o retorno pode estar dentro de .body
+        const pagamentoMP =
+            pagamentoMPResponse?.body ?? pagamentoMPResponse;
+
+
+        // ==========================================
+        // MOSTRA DADOS DO MERCADO PAGO
+        // ==========================================
+
         console.log("========== MERCADO PAGO ==========");
-        console.log("ID:", pagamentoMP.id);
-        console.log("STATUS:", pagamentoMP.status);
-        console.log("STATUS DETAIL:", pagamentoMP.status_detail);
-        console.log("VALOR:", pagamentoMP.transaction_amount);
+
+        console.log(
+            "ID RECEBIDO NO WEBHOOK:",
+            paymentIdString
+        );
+
+        console.log(
+            "ID RETORNADO PELO MP:",
+            pagamentoMP?.id
+        );
+
+        console.log(
+            "STATUS:",
+            pagamentoMP?.status
+        );
+
+        console.log(
+            "STATUS DETAIL:",
+            pagamentoMP?.status_detail
+        );
+
+        console.log(
+            "VALOR:",
+            pagamentoMP?.transaction_amount
+        );
+
         console.log("==================================");
 
 
         // ==========================================
-        // PROCURA PAGAMENTO NO BANCO
+        // CONFIRMA SE OS IDs SÃO IGUAIS
+        // ==========================================
+
+        if (
+            !pagamentoMP?.id ||
+            pagamentoMP.id.toString() !== paymentIdString
+        ) {
+
+            console.error("⚠️ ==================================");
+            console.error("⚠️ IDs DIFERENTES!");
+            console.error(
+                "⚠️ ID RECEBIDO PELO WEBHOOK:",
+                paymentIdString
+            );
+            console.error(
+                "⚠️ ID RETORNADO PELO MERCADO PAGO:",
+                pagamentoMP?.id
+            );
+            console.error("⚠️ ==================================");
+
+            throw {
+                status: 400,
+                message:
+                    "O ID recebido pelo webhook é diferente do ID retornado pelo Mercado Pago"
+            };
+        }
+
+
+        console.log(
+            "✅ ID DO WEBHOOK E ID DO MERCADO PAGO SÃO IGUAIS"
+        );
+
+
+        // ==========================================
+        // BUSCA PAGAMENTO NO BANCO
         // ==========================================
 
         const pagamento = await Pagamento.findOne({
-            paymentId: paymentId.toString()
+            paymentId: paymentIdString
         });
 
+
         console.log("========== BANCO ==========");
+
         console.log(
             "PAGAMENTO ENCONTRADO:",
             !!pagamento
         );
 
+
         if (pagamento) {
+
             console.log(
                 "ID PAGAMENTO:",
                 pagamento._id
@@ -961,29 +1072,38 @@ async processarWebhook(paymentId) {
             );
         }
 
+
         console.log("============================");
 
+
+        // ==========================================
+        // PAGAMENTO NÃO ENCONTRADO
+        // ==========================================
 
         if (!pagamento) {
 
             throw {
                 status: 404,
                 message:
-                    `Pagamento ${paymentId} não encontrado no sistema`
+                    `Pagamento ${paymentIdString} não encontrado no sistema`
             };
         }
 
 
         // ==========================================
-        // ATUALIZA PAGAMENTO
+        // ATUALIZA STATUS DO PAGAMENTO
         // ==========================================
 
         pagamento.status = pagamentoMP.status;
 
+
         // Se aprovado, registra a data do pagamento
         if (pagamentoMP.status === "approved") {
+
             pagamento.dataPagamento = new Date();
+
         }
+
 
         await pagamento.save();
 
@@ -1005,11 +1125,16 @@ async processarWebhook(paymentId) {
                     pagamento.Agendamento
                 );
 
+
             console.log(
                 "AGENDAMENTO ENCONTRADO:",
                 !!agendamento
             );
 
+
+            // ==========================================
+            // AGENDAMENTO NÃO ENCONTRADO
+            // ==========================================
 
             if (!agendamento) {
 
@@ -1018,6 +1143,7 @@ async processarWebhook(paymentId) {
                     message:
                         "Agendamento relacionado ao pagamento não encontrado"
                 };
+
             }
 
 
@@ -1026,6 +1152,10 @@ async processarWebhook(paymentId) {
                 agendamento.status
             );
 
+
+            // ==========================================
+            // CONFIRMA AGENDAMENTO
+            // ==========================================
 
             agendamento.status = "CONFIRMADO";
 
@@ -1037,16 +1167,41 @@ async processarWebhook(paymentId) {
                 agendamento.status
             );
 
+
             console.log(
                 "AGENDAMENTO CONFIRMADO:",
                 agendamento._id
             );
+
         }
 
+
+        // ==========================================
+        // FINAL
+        // ==========================================
+
+        console.log(
+            "========================================"
+        );
 
         console.log(
             "WEBHOOK FINALIZADO COM SUCESSO"
         );
+
+        console.log(
+            "PAYMENT ID:",
+            paymentIdString
+        );
+
+        console.log(
+            "STATUS FINAL:",
+            pagamentoMP.status
+        );
+
+        console.log(
+            "========================================"
+        );
+
 
         return true;
 
@@ -1054,8 +1209,16 @@ async processarWebhook(paymentId) {
     } catch (error) {
 
         console.error(
+            "========================================"
+        );
+
+        console.error(
             "ERRO AO PROCESSAR WEBHOOK:",
             error
+        );
+
+        console.error(
+            "========================================"
         );
 
         throw error;

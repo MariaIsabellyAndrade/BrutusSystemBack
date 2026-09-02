@@ -2,9 +2,6 @@ import AgendamentoService from "../services/AgendamentoService.js";
 
 class AgendamentoController {
 
-
-
-
     static async horariosDisponiveis(req, res) {
 
     try {
@@ -96,19 +93,18 @@ class AgendamentoController {
     }
 
     static async webhook(req, res) {
+ console.log("🔥🔥🔥 WEBHOOK RECEBIDO 🔥🔥🔥");
+
+    console.log("BODY:", req.body);
+    console.log("QUERY:", req.query);
 
     try {
 
         console.log("========== WEBHOOK MERCADO PAGO ==========");
 
-        console.log("BODY:", req.body);
-        console.log("QUERY:", req.query);
-
         const paymentId =
             req.body?.data?.id ||
-            req.body?.id ||
-            req.query?.["data.id"] ||
-            req.query?.id;
+            req.query?.["data.id"];
 
         console.log(
             "PAYMENT ID RECEBIDO:",
