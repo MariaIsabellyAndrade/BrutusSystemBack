@@ -29,6 +29,9 @@ router.post('/barbeiros', authMiddleware, isAdmin,upload.single('foto'), Barbeir
 router.get('/barbeiros', BarbeiroController.getAllBarbeiro);
 router.put('/barbeiros/:id', authMiddleware, isAdmin,upload.single('foto'), BarbeiroController.updateBarbeiro);
 router.delete('/barbeiros/:id',authMiddleware, isAdmin,BarbeiroController.deleteBarbeiro);
+router.get("/barbeiro/:barbeiroId",AgendamentoController.listarAgendamentosPorBarbeiro);
+router.get("/agendamentos/barbeiro/:barbeiroId/indicadores",AgendamentoController.buscarIndicadoresPorBarbeiro);
+router.get("/agendamentos/barbeiro/:barbeiroId/faturamento",AgendamentoController.buscarFaturamentoPorBarbeiro);
 
 router.get("/barbeiros/resumo", async (req, res) => {
   try {
@@ -63,6 +66,7 @@ router.get("/servicos/resumo", async (req, res) => {
 });
 
 
+router.get("/cliente/:clienteId",AgendamentoController.listarAgendamentosPorCliente);
 router.post('/clientes',upload.single('foto'), ClienteController.createCliente);
 router.get('/clientes', ClienteController.getAllCliente);
 router.put('/clientes/:id',upload.single('foto'), ClienteController.updateCliente);

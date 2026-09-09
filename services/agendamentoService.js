@@ -1233,6 +1233,48 @@ async listarAgendamentos() {
 
     return agendamentos;
 }
+
+
+async listarAgendamentosPorBarbeiro(barbeiroId) {
+    const barbeiro = await Barbeiro.findById(barbeiroId);
+    if (!barbeiro) {
+        throw {
+            status: 404,
+            message: "Barbeiro não encontrado"
+        };
+    }
+    const agendamentos =
+        await Agendamento.findPorBarbeiro(barbeiroId);
+
+    return agendamentos;
+}
+
+async buscarIndicadoresPorBarbeiro(barbeiroId) {
+    return await Agendamento.buscarIndicadoresPorBarbeiro(barbeiroId);
+}
+async buscarFaturamentoPorBarbeiro(
+    barbeiroId,
+    dataInicio,
+    dataFim
+) {
+    return await Agendamento.buscarFaturamentoPorBarbeiro(
+        barbeiroId,
+        dataInicio,
+        dataFim
+    );
+}
+
+async listarAgendamentosPorCliente(clienteId) {
+    const cliente = await Cliente.findById(clienteId);
+
+    if (!cliente) {
+        const erro = new Error("Cliente não encontrado");
+        erro.status = 404;
+        throw erro;
+    }
+
+    return await Agendamento.findPorCliente(clienteId);
+}
 }
 
 export default new AgendamentoService();
