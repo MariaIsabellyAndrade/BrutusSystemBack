@@ -92,6 +92,59 @@ class BarbeiroService {
         // Soft delete: Apenas desativa o barbeiro no sistema
         return await Barbeiro.update(id, { ativo: false });
     }
+
+    /*
+     * Salva os slots bloqueados de um dia específico para um barbeiro.
+     * Se já existe uma entrada para aquela data, substitui.
+     * Se slots for vazio, remove a entrada do dia.
+     */
+    async salvarHorariosBloqueados(id, data, slots) {
+        const barbeiro = await Barbeiro.findById(id);
+
+        if (!barbeiro) {
+            throw { status: 404, message: "Barbeiro não encontrado" };
+        }
+
+        // Remove entrada existente para essa data
+        barbeiro.horariosBloqueados = (barbeiro.horariosBloqueados || []).filter(
+            (h) => h.data !== data
+        );
+
+        // Se há slots a bloquear, adiciona nova entrada
+        if (Array.isArray(slots) && slots.length > 0) {
+            barbeiro.horariosBloqueados.push({ data, slots });
+        }
+
+        await barbeiro.save();
+
+        return {
+            mensagem: "Horários bloqueados salvos com sucesso",
+            data,
+            slots: slots || [],
+            horariosBloqueados: barbeiro.horariosBloqueados
+        };
+    }
+
+    /*
+     * Retorna os slots bloqueados de um barbeiro para uma data.
+     */
+    async buscarHorariosBloqueados(id, data) {
+        const barbeiro = await Barbeiro.findById(id);
+
+        if (!barbeiro) {
+            throw { status: 404, message: "Barbeiro não encontrado" };
+        }
+
+        const entrada = (barbeiro.horariosBloqueados || []).find(
+            (h) => h.data === data
+        );
+
+        return {
+            barbeiroId: id,
+            data,
+            slots: entrada ? entrada.slots : []
+        };
+    }
 }
 
 export default new BarbeiroService();

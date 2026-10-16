@@ -4,6 +4,7 @@ import upload from "../config/multer.js";
 import ServicoController from '../controllers/ServicoController.js';
 import ClienteController from '../controllers/ClienteController.js';
 import AgendamentoController from '../controllers/AgendamentoController.js';
+import RelatorioController from '../controllers/RelatorioController.js';
 import Barbeiro from '../models/Barbeiro.js';
 import Servico from '../models/Servico.js';
 import Cliente from '../models/Cliente.js';
@@ -29,6 +30,8 @@ router.post('/barbeiros', authMiddleware, isAdmin,upload.single('foto'), Barbeir
 router.get('/barbeiros', BarbeiroController.getAllBarbeiro);
 router.put('/barbeiros/:id', authMiddleware, isAdmin,upload.single('foto'), BarbeiroController.updateBarbeiro);
 router.delete('/barbeiros/:id',authMiddleware, isAdmin,BarbeiroController.deleteBarbeiro);
+router.put('/barbeiros/:id/horarios-bloqueados', authMiddleware, isAdmin, BarbeiroController.salvarHorariosBloqueados);
+router.get('/barbeiros/:id/horarios-bloqueados', authMiddleware, BarbeiroController.buscarHorariosBloqueados);
 router.get("/barbeiro/:barbeiroId",AgendamentoController.listarAgendamentosPorBarbeiro);
 router.get("/agendamentos/barbeiro/:barbeiroId/indicadores",AgendamentoController.buscarIndicadoresPorBarbeiro);
 router.get("/agendamentos/barbeiro/:barbeiroId/faturamento",AgendamentoController.buscarFaturamentoPorBarbeiro);
@@ -85,6 +88,16 @@ router.get("/clientes/resumo", async (req, res) => {
   }
 });
 
+
+// ============================================================
+// RELATÓRIO FINANCEIRO
+// Protegido — apenas ADMIN e BARBEIRO autenticados
+// ============================================================
+router.get(
+    "/relatorio/financeiro",
+    authMiddleware,
+    RelatorioController.financeiro
+);
 
 router.post("/login", login);
 router.post("/registrar-cliente",upload.single('foto'), registrarCliente);

@@ -7,6 +7,7 @@ import Pagamento from "../models/Pagamento.js";
 import Usuario from "../models/Usuario.js";
 import client from "../config/mercadoPago.js";
 import pkg from "mercadopago";
+import ServicoModel from "../models/ServicoSchema.js"; 
 const { Payment } = pkg;
 
 class AgendamentoService {
@@ -153,6 +154,17 @@ class AgendamentoService {
         );
 
     // ==========================================
+    // SLOTS BLOQUEADOS PELO ADMIN
+    // ==========================================
+
+    const slotsBloqueados = (() => {
+        const entrada = (barbeiro.horariosBloqueados || []).find(
+            (h) => h.data === data
+        );
+        return entrada ? entrada.slots : [];
+    })();
+
+    // ==========================================
     // TRANSFORMA CADA AGENDAMENTO EM INTERVALO
     // ==========================================
 
@@ -293,24 +305,63 @@ class AgendamentoService {
         }
 
         // ==========================================
+        // NÃO MOSTRA SLOTS BLOQUEADOS PELO ADMIN
+        // ==========================================
+
+        const horasStr = String(inicioNovo.getHours()).padStart(2, "0");
+        const minutosStr = String(inicioNovo.getMinutes()).padStart(2, "0");
+        const slotStr = `${horasStr}:${minutosStr}`;
+
+        if (slotsBloqueados.includes(slotStr)) {
+
+            horarioAtual.setMinutes(
+                horarioAtual.getMinutes() +
+                intervaloMinutos
+            );
+
+            continue;
+        }
+
+        // ==========================================
         // VERIFICA SE BATE COM ALGUM AGENDAMENTO
         // ==========================================
 
-        const possuiConflito =
-            intervalosOcupados.some(intervalo => {
+        // Encontra o intervalo que está bloqueando este slot (se existir)
+        const intervaloConflitante = intervalosOcupados.find(intervalo => {
+            return (
+                inicioNovo < intervalo.fim &&
+                fimNovo > intervalo.inicio
+            );
+        });
 
-                return (
-                    inicioNovo < intervalo.fim &&
-                    fimNovo > intervalo.inicio
-                );
+        if (intervaloConflitante) {
+            // Pula direto para o fim do intervalo que conflita,
+            // arredondando para o próximo múltiplo de 30 min
+            // caso o fim caia em um horário quebrado (ex: 20:40 → 20:40,
+            // 20:55 → 21:00).
+            const fimConflito = intervaloConflitante.fim;
 
-            });
+            const minutosFim =
+                fimConflito.getHours() * 60 + fimConflito.getMinutes();
+
+            // Arredonda para cima para o próximo múltiplo de intervaloMinutos
+            const proximoMultiplo =
+                Math.ceil(minutosFim / intervaloMinutos) * intervaloMinutos;
+
+            horarioAtual = new Date(dataBase);
+            horarioAtual.setHours(
+                Math.floor(proximoMultiplo / 60),
+                proximoMultiplo % 60,
+                0,
+                0
+            );
+
+            continue;
+        }
 
         // ==========================================
         // SE NÃO TIVER CONFLITO, DISPONÍVEL
         // ==========================================
-
-        if (!possuiConflito) {
 
             const horas =
                 String(
@@ -325,7 +376,6 @@ class AgendamentoService {
             horariosDisponiveis.push(
                 `${horas}:${minutos}`
             );
-        }
 
         // Próximo horário
         horarioAtual.setMinutes(
@@ -848,9 +898,9 @@ calcularIntervalo(data, hora, duracaoTotal) {
 async reagendarAgendamento(
     agendamentoId,
     novaData,
-    novaHora
+    novaHora,
+    novosServicosIds
 ) {
-
     const agendamento =
         await Agendamento.findById(agendamentoId);
 
@@ -861,7 +911,6 @@ async reagendarAgendamento(
         };
     }
 
-  
     const dataAtualAgendamento =
         new Date(agendamento.data);
 
@@ -881,10 +930,10 @@ async reagendarAgendamento(
     const agora = new Date();
 
     const diferencaHoras =
-        (dataAtualAgendamento.getTime() - agora.getTime()) /
+        (dataAtualAgendamento.getTime() -
+            agora.getTime()) /
         (1000 * 60 * 60);
 
-  
     if (diferencaHoras < 24) {
         throw {
             status: 400,
@@ -893,13 +942,11 @@ async reagendarAgendamento(
         };
     }
 
- 
     this.validarHorarioFuncionamento(
         novaData,
         novaHora
     );
 
-  
     const horarioExistente =
         await Agendamento.verificarHorario(
             agendamento.Barbeiro,
@@ -910,7 +957,7 @@ async reagendarAgendamento(
     if (
         horarioExistente &&
         horarioExistente._id.toString() !==
-        agendamento._id.toString()
+            agendamento._id.toString()
     ) {
         throw {
             status: 400,
@@ -918,20 +965,81 @@ async reagendarAgendamento(
                 "Já existe um agendamento para este horário"
         };
     }
+
+    // ==============================
+    // ATUALIZAÇÃO DOS SERVIÇOS
+    // ==============================
+
+    if (
+        !Array.isArray(novosServicosIds) ||
+        novosServicosIds.length === 0
+    ) {
+        throw {
+            status: 400,
+            message:
+                "É necessário selecionar pelo menos um serviço"
+        };
+    }
+
+    const servicosEncontrados =
+        await ServicoModel.find({
+            _id: {
+                $in: novosServicosIds
+            }
+        });
+
+    if (
+        servicosEncontrados.length !==
+        novosServicosIds.length
+    ) {
+        throw {
+            status: 404,
+            message:
+                "Um ou mais serviços não foram encontrados"
+        };
+    }
+
+    // Remove os serviços antigos
+    await AgendaServ.deletarPorAgendamento(
+        agendamentoId
+    );
+
+    // Adiciona os novos serviços
+    await AgendaServ.vincularServicos(
+        agendamentoId,
+        novosServicosIds
+    );
+
+    // Soma o valor de TODOS os serviços
+    const novoValorTotal =
+        servicosEncontrados.reduce(
+            (total, servico) => {
+                return total + Number(servico.valor || 0);
+            },
+            0
+        );
+
+    agendamento.valorTotal =
+        novoValorTotal;
+
+    // Atualiza data e horário
     agendamento.data = novaData;
     agendamento.hora = novaHora;
+
     await agendamento.save();
+
     return {
-        message: "Agendamento reagendado com sucesso",
+        message:
+            "Agendamento reagendado com sucesso",
+
         agendamento
     };
 }
+
+
 async processarWebhook(paymentId) {
     try {
 
-        // ==========================================
-        // VALIDA PAYMENT ID
-        // ==========================================
 
         if (!paymentId) {
             throw {

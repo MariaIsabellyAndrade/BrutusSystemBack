@@ -53,7 +53,17 @@ class Agendamento{
         }
 
                 static async findAll() {
-                    return await AgendamentoModel.find();
+                    const agendamentos = await AgendamentoModel.find()
+                    .populate("Cliente", "nome sobrenome telefone email foto CPF")
+                    .populate("Barbeiro", "nome sobrenome foto telefone")
+                    .lean();
+
+                    for (const agendamento of agendamentos) {
+                        agendamento.Servicos =
+                            await AgendaServ.buscarServicosDoAgendamento(agendamento._id);
+                    }
+
+                    return agendamentos;
                 }
             
                 static async findById(id) {
@@ -70,9 +80,19 @@ class Agendamento{
                     return await AgendamentoModel.findByIdAndDelete(id);
                 }
                 static async findPorBarbeiro(barbeiroId) {
-                    return await AgendamentoModel.find({
+                    const agendamentos = await AgendamentoModel.find({
                         Barbeiro: barbeiroId
-                    });
+                    })
+                    .populate("Cliente", "nome sobrenome telefone email foto CPF")
+                    .populate("Barbeiro", "nome sobrenome foto telefone")
+                    .lean();
+
+                    for (const agendamento of agendamentos) {
+                        agendamento.Servicos =
+                            await AgendaServ.buscarServicosDoAgendamento(agendamento._id);
+                    }
+
+                    return agendamentos;
                 }
 
                 static async findPorBarbeiroEData(barbeiroId, data) {

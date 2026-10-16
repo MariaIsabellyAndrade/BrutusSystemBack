@@ -53,6 +53,44 @@ class BarbeiroController {
             return res.status(500).send("Erro ao deletar barbeiro");
         }
     }
+
+    static async salvarHorariosBloqueados(req, res) {
+        try {
+            const { id } = req.params;
+            const { data, slots } = req.body;
+
+            if (!data) {
+                return res.status(400).json({ erro: "Data não informada" });
+            }
+
+            const resultado = await BarbeiroService.salvarHorariosBloqueados(id, data, slots || []);
+            return res.json(resultado);
+        } catch (error) {
+            console.error("Erro ao salvar horários bloqueados:", error);
+            return res.status(error.status || 500).json({
+                erro: error.message || "Erro ao salvar horários bloqueados"
+            });
+        }
+    }
+
+    static async buscarHorariosBloqueados(req, res) {
+        try {
+            const { id } = req.params;
+            const { data } = req.query;
+
+            if (!data) {
+                return res.status(400).json({ erro: "Data não informada" });
+            }
+
+            const resultado = await BarbeiroService.buscarHorariosBloqueados(id, data);
+            return res.json(resultado);
+        } catch (error) {
+            console.error("Erro ao buscar horários bloqueados:", error);
+            return res.status(error.status || 500).json({
+                erro: error.message || "Erro ao buscar horários bloqueados"
+            });
+        }
+    }
 }
 
 export default BarbeiroController;

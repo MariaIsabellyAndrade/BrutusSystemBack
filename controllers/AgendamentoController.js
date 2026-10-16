@@ -211,12 +211,13 @@ static async webhook(req, res) {
     static async reagendarAgendamento(req, res) {
     try {
         const { id } = req.params;
-        const { data, hora } = req.body;
+       const { data, hora, servicoIds } = req.body;
         const resultado =
             await AgendamentoService.reagendarAgendamento(
                 id,
                 data,
-                hora
+                hora,
+                servicoIds
             );
         return res.status(200).json(resultado);
     } catch (error) {
