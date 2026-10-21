@@ -30,7 +30,7 @@ router.post('/barbeiros', authMiddleware, isAdmin,upload.single('foto'), Barbeir
 router.get('/barbeiros', BarbeiroController.getAllBarbeiro);
 router.put('/barbeiros/:id', authMiddleware, isAdmin,upload.single('foto'), BarbeiroController.updateBarbeiro);
 router.delete('/barbeiros/:id',authMiddleware, isAdmin,BarbeiroController.deleteBarbeiro);
-router.put('/barbeiros/:id/horarios-bloqueados', authMiddleware, isAdmin, BarbeiroController.salvarHorariosBloqueados);
+router.put('/barbeiros/:id/horarios-bloqueados', authMiddleware, BarbeiroController.salvarHorariosBloqueados);
 router.get('/barbeiros/:id/horarios-bloqueados', authMiddleware, BarbeiroController.buscarHorariosBloqueados);
 router.get("/barbeiro/:barbeiroId",AgendamentoController.listarAgendamentosPorBarbeiro);
 router.get("/agendamentos/barbeiro/:barbeiroId/indicadores",AgendamentoController.buscarIndicadoresPorBarbeiro);
