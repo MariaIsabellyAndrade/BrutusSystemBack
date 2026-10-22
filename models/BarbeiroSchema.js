@@ -26,9 +26,22 @@ const BarbeiroSchema = new mongoose.Schema(
         horariosBloqueados: [
             {
                 data:  { type: String, required: true }, // "YYYY-MM-DD"
-                slots: [{ type: String }]                // ["HH:MM", ...]
+                slots: [{ type: String }],               // ["HH:MM", ...]
+                motivos: [{
+                    horario: { type: String, required: true },
+                    motivo: { type: String, required: true, maxlength: 300 }
+                }]
             }
-        ]
+        ],
+        bloqueiosRecorrentes: [{
+            diasSemana: [{ type: Number, min: 0, max: 6 }],
+            horaInicio: { type: String, required: true },
+            horaFim: { type: String, required: true },
+            dataInicio: { type: String, required: true },
+            dataFim: { type: String, default: "" },
+            motivo: { type: String, required: true, maxlength: 300 },
+            ativo: { type: Boolean, default: true }
+        }]
     },
     { 
         timestamps: true,

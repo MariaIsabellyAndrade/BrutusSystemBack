@@ -30,8 +30,13 @@ router.post('/barbeiros', authMiddleware, isAdmin,upload.single('foto'), Barbeir
 router.get('/barbeiros', BarbeiroController.getAllBarbeiro);
 router.put('/barbeiros/:id', authMiddleware, isAdmin,upload.single('foto'), BarbeiroController.updateBarbeiro);
 router.delete('/barbeiros/:id',authMiddleware, isAdmin,BarbeiroController.deleteBarbeiro);
-router.put('/barbeiros/:id/horarios-bloqueados', authMiddleware, BarbeiroController.salvarHorariosBloqueados);
+router.put('/barbeiros/:id/horarios-bloqueados', authMiddleware, isBarbeiro, BarbeiroController.salvarHorariosBloqueados);
 router.get('/barbeiros/:id/horarios-bloqueados', authMiddleware, BarbeiroController.buscarHorariosBloqueados);
+router.get('/barbeiros/:id/bloqueios-recorrentes', authMiddleware, isBarbeiro, BarbeiroController.listarBloqueiosRecorrentes);
+router.put('/barbeiros/:id/bloqueios-recorrentes', authMiddleware, isBarbeiro, BarbeiroController.salvarBloqueiosRecorrentes);
+router.get('/admin/horarios-bloqueados', authMiddleware, isAdmin, BarbeiroController.listarBloqueiosParaAdmin);
+router.get('/admin/notificacoes/horarios', authMiddleware, isAdmin, BarbeiroController.listarNotificacoesHorarios);
+router.patch('/admin/notificacoes/horarios/:id/lida', authMiddleware, isAdmin, BarbeiroController.marcarNotificacaoHorarioLida);
 router.get("/barbeiro/:barbeiroId",AgendamentoController.listarAgendamentosPorBarbeiro);
 router.get("/agendamentos/barbeiro/:barbeiroId/indicadores",AgendamentoController.buscarIndicadoresPorBarbeiro);
 router.get("/agendamentos/barbeiro/:barbeiroId/faturamento",AgendamentoController.buscarFaturamentoPorBarbeiro);
@@ -98,6 +103,9 @@ router.get(
     authMiddleware,
     RelatorioController.financeiro
 );
+router.get("/relatorio/gerencial", authMiddleware, RelatorioController.gerencial);
+router.patch("/relatorio/comissoes/servicos/:servicoId", authMiddleware, isAdmin, RelatorioController.atualizarComissaoServico);
+router.patch("/relatorio/comissoes/:comissaoId/paga", authMiddleware, isAdmin, RelatorioController.marcarComissaoPaga);
 
 router.post("/login", login);
 router.post("/registrar-cliente",upload.single('foto'), registrarCliente);
@@ -123,6 +131,7 @@ router.put(
     authMiddleware,
     AgendamentoController.reagendarAgendamento
 );
+router.patch("/agendamentos/:id/concluir", authMiddleware, AgendamentoController.concluirAgendamento);
 router.post(
     "/webhook",
     AgendamentoController.webhook

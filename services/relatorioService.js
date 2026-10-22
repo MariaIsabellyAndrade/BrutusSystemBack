@@ -60,9 +60,9 @@ class RelatorioService {
     _agruparPorData(agendamentos, status = null) {
         const mapa = {};
 
-        const lista = status
-            ? agendamentos.filter(a => a.status === status)
-            : agendamentos;
+        const lista = status === "CONFIRMADO"
+            ? agendamentos.filter(a => a.status === "CONFIRMADO" || a.status === "CONCLUIDO")
+            : status ? agendamentos.filter(a => a.status === status) : agendamentos;
 
         lista.forEach(ag => {
             const chave = new Date(ag.data)
@@ -89,9 +89,11 @@ class RelatorioService {
         const confirmados = agendamentos.filter(a => a.status === "CONFIRMADO");
         const pendentes   = agendamentos.filter(a => a.status === "PENDENTE");
         const cancelados  = agendamentos.filter(a => a.status === "CANCELADO");
+        const concluidos  = agendamentos.filter(a => a.status === "CONCLUIDO");
+        const realizados  = [...confirmados, ...concluidos];
 
         // Receita efetivamente recebida: agendamentos CONFIRMADOS
-        const receitaRecebida = confirmados.reduce(
+        const receitaRecebida = realizados.reduce(
             (acc, a) => acc + Number(a.valorTotal || 0),
             0
         );
@@ -114,6 +116,7 @@ class RelatorioService {
             quantidades: {
                 total,
                 confirmados: confirmados.length,
+                concluidos: concluidos.length,
                 pendentes: pendentes.length,
                 cancelados: cancelados.length
             },
@@ -191,7 +194,7 @@ class RelatorioService {
 
         const indicadores = this._calcularIndicadores(agendamentos);
 
-        const confirmados = agendamentos.filter(a => a.status === "CONFIRMADO");
+        const confirmados = agendamentos.filter(a => a.status === "CONFIRMADO" || a.status === "CONCLUIDO");
         const periodos    = this._faturamentoPorPeriodo(confirmados);
         const grafico     = this._agruparPorData(agendamentos, "CONFIRMADO");
 
@@ -223,7 +226,7 @@ class RelatorioService {
         // ─── INDICADORES GLOBAIS ─────────────────────────────
         const indicadoresGlobais = this._calcularIndicadores(agendamentos);
 
-        const confirmadosGlobal = agendamentos.filter(a => a.status === "CONFIRMADO");
+        const confirmadosGlobal = agendamentos.filter(a => a.status === "CONFIRMADO" || a.status === "CONCLUIDO");
         const periodosGlobais   = this._faturamentoPorPeriodo(confirmadosGlobal);
         const graficoGlobal     = this._agruparPorData(agendamentos, "CONFIRMADO");
 
@@ -238,6 +241,7 @@ class RelatorioService {
                 rankingMap[bId] = {
                     barbeiroId: bId,
                     confirmados: 0,
+                    concluidos: 0,
                     pendentes: 0,
                     cancelados: 0,
                     receitaRecebida: 0,
@@ -247,6 +251,9 @@ class RelatorioService {
 
             if (ag.status === "CONFIRMADO") {
                 rankingMap[bId].confirmados++;
+                rankingMap[bId].receitaRecebida += Number(ag.valorTotal || 0);
+            } else if (ag.status === "CONCLUIDO") {
+                rankingMap[bId].concluidos++;
                 rankingMap[bId].receitaRecebida += Number(ag.valorTotal || 0);
             } else if (ag.status === "PENDENTE") {
                 rankingMap[bId].pendentes++;
@@ -267,6 +274,7 @@ class RelatorioService {
                     nome: b ? `${b.nome} ${b.sobrenome}` : "Desconhecido",
                     foto: b?.foto || null,
                     confirmados: item.confirmados,
+                    concluidos: item.concluidos,
                     pendentes: item.pendentes,
                     cancelados: item.cancelados,
                     receitaRecebida: Number(item.receitaRecebida.toFixed(2)),
@@ -284,6 +292,7 @@ class RelatorioService {
                     nome: `${b.nome} ${b.sobrenome}`,
                     foto: b.foto || null,
                     confirmados: 0,
+                    concluidos: 0,
                     pendentes: 0,
                     cancelados: 0,
                     receitaRecebida: 0,

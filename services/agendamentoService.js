@@ -7,7 +7,9 @@ import Pagamento from "../models/Pagamento.js";
 import Usuario from "../models/Usuario.js";
 import client from "../config/mercadoPago.js";
 import pkg from "mercadopago";
-import ServicoModel from "../models/ServicoSchema.js"; 
+import ServicoModel from "../models/ServicoSchema.js";
+import AgendaServModel from "../models/AgendaServSchema.js";
+import ComissaoModel from "../models/ComissaoSchema.js"; 
 const { Payment } = pkg;
 
 class AgendamentoService {
@@ -161,8 +163,14 @@ class AgendamentoService {
         const entrada = (barbeiro.horariosBloqueados || []).find(
             (h) => h.data === data
         );
-        return entrada ? entrada.slots : [];
+        return (entrada ? entrada.slots : []).map((slot) => typeof slot === "string" ? slot : slot?.horario).filter(Boolean);
     })();
+
+    const diaSemanaAgenda = new Date(data + "T00:00:00Z").getUTCDay();
+    const recorrenciasDoDia = (barbeiro.bloqueiosRecorrentes || []).filter((regra) =>
+        regra.ativo !== false && regra.diasSemana.includes(diaSemanaAgenda) &&
+        data >= regra.dataInicio && (!regra.dataFim || data <= regra.dataFim)
+    );
 
     // ==========================================
     // TRANSFORMA CADA AGENDAMENTO EM INTERVALO
@@ -312,7 +320,15 @@ class AgendamentoService {
         const minutosStr = String(inicioNovo.getMinutes()).padStart(2, "0");
         const slotStr = `${horasStr}:${minutosStr}`;
 
-        if (slotsBloqueados.includes(slotStr)) {
+        const inicioMinutos = inicioNovo.getHours() * 60 + inicioNovo.getMinutes();
+        const fimMinutos = fimNovo.getHours() * 60 + fimNovo.getMinutes();
+        const bloqueadoPorRecorrencia = recorrenciasDoDia.some((regra) => {
+            const inicioRegra = Number(regra.horaInicio.slice(0, 2)) * 60 + Number(regra.horaInicio.slice(3, 5));
+            const fimRegra = Number(regra.horaFim.slice(0, 2)) * 60 + Number(regra.horaFim.slice(3, 5));
+            return inicioMinutos < fimRegra && fimMinutos > inicioRegra;
+        });
+
+        if (slotsBloqueados.includes(slotStr) || bloqueadoPorRecorrencia) {
 
             horarioAtual.setMinutes(
                 horarioAtual.getMinutes() +
@@ -386,6 +402,31 @@ class AgendamentoService {
 
     return horariosDisponiveis;
 }
+
+    async validarHorarioBloqueado(barbeiroId, data, hora, duracao) {
+        const barbeiro = await Barbeiro.findById(barbeiroId);
+        if (!barbeiro) throw { status: 404, message: "Barbeiro não encontrado" };
+        const [horaInicio, minutoInicio] = hora.split(":").map(Number);
+        const inicio = horaInicio * 60 + minutoInicio;
+        const fim = inicio + Number(duracao || 0);
+        const entrada = (barbeiro.horariosBloqueados || []).find((item) => item.data === data);
+        const conflitoPontual = (entrada?.slots || []).some((slot) => {
+            const horario = typeof slot === "string" ? slot : slot?.horario;
+            const [h, m] = String(horario || "").split(":").map(Number);
+            const minuto = h * 60 + m;
+            return inicio < minuto + 30 && fim > minuto;
+        });
+        const diaSemana = new Date(data + "T00:00:00Z").getUTCDay();
+        const conflitoRecorrente = (barbeiro.bloqueiosRecorrentes || []).some((regra) => {
+            if (regra.ativo === false || !regra.diasSemana.includes(diaSemana) || data < regra.dataInicio || (regra.dataFim && data > regra.dataFim)) return false;
+            const inicioRegra = Number(regra.horaInicio.slice(0, 2)) * 60 + Number(regra.horaInicio.slice(3, 5));
+            const fimRegra = Number(regra.horaFim.slice(0, 2)) * 60 + Number(regra.horaFim.slice(3, 5));
+            return inicio < fimRegra && fim > inicioRegra;
+        });
+        if (conflitoPontual || conflitoRecorrente) {
+            throw { status: 400, message: "Este horário está bloqueado pelo barbeiro" };
+        }
+    }
 
 async criarAgendamento({
     usuarioId,
@@ -463,6 +504,7 @@ this.validarHorarioFuncionamento(
     hora,
     duracaoTotal
 );
+await this.validarHorarioBloqueado(barbeiroId, data, hora, duracaoTotal);
 
     const inicioNovo =
         new Date(`${data}T${hora}:00`);
@@ -999,6 +1041,9 @@ async reagendarAgendamento(
         };
     }
 
+    const duracaoNova = servicosEncontrados.reduce((total, servico) => total + Number(servico.duracao || 0), 0);
+    await this.validarHorarioBloqueado(agendamento.Barbeiro, novaData, novaHora, duracaoNova);
+
     // Remove os serviços antigos
     await AgendaServ.deletarPorAgendamento(
         agendamentoId
@@ -1036,6 +1081,35 @@ async reagendarAgendamento(
     };
 }
 
+
+async concluirAgendamento(agendamentoId, usuarioId, tipoUsuario) {
+    const agendamento = await Agendamento.findById(agendamentoId);
+    if (!agendamento) throw { status: 404, message: "Agendamento não encontrado" };
+    if (tipoUsuario === "BARBEIRO") {
+        const barbeiro = await Barbeiro.findOne({ Usuario: usuarioId });
+        if (!barbeiro || String(agendamento.Barbeiro) !== String(barbeiro._id)) throw { status: 403, message: "Acesso permitido somente aos seus agendamentos" };
+    } else if (tipoUsuario !== "ADMIN") {
+        throw { status: 403, message: "Acesso permitido somente para barbeiros e administradores" };
+    }
+    if (agendamento.status === "CANCELADO" || agendamento.status === "PENDENTE") throw { status: 400, message: "Somente agendamentos confirmados podem ser concluídos" };
+    if (agendamento.status === "CONCLUIDO") return { message: "Atendimento já concluído", agendamento };
+
+    agendamento.status = "CONCLUIDO";
+    await agendamento.save();
+    const itensServico = await AgendaServModel.find({ Agendamento: agendamento._id }).populate({ path: "Servico", select: "+comissaoPercentual valor" });
+    for (const item of itensServico) {
+        const servico = item.Servico;
+        if (!servico) continue;
+        const percentual = Number(servico.comissaoPercentual || 0);
+        const valorBase = Number(item.valorCobrado ?? servico.valor ?? 0);
+        await ComissaoModel.updateOne(
+            { Agendamento: agendamento._id, Servico: servico._id },
+            { $setOnInsert: { Barbeiro: agendamento.Barbeiro, Agendamento: agendamento._id, Servico: servico._id, valorBase, percentual, valor: Number((valorBase * percentual / 100).toFixed(2)), status: "PENDENTE", geradaEm: new Date() } },
+            { upsert: true }
+        );
+    }
+    return { message: "Atendimento concluído e comissão registrada", agendamento };
+}
 
 async processarWebhook(paymentId) {
     try {
@@ -1266,8 +1340,8 @@ async processarWebhook(paymentId) {
             // ==========================================
 
             agendamento.status = "CONFIRMADO";
-
             await agendamento.save();
+
 
 
             console.log(

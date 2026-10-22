@@ -57,13 +57,13 @@ class BarbeiroController {
     static async salvarHorariosBloqueados(req, res) {
         try {
             const { id } = req.params;
-            const { data, slots } = req.body;
+            const { data, slots, motivos } = req.body;
 
             if (!data) {
                 return res.status(400).json({ erro: "Data não informada" });
             }
 
-            const resultado = await BarbeiroService.salvarHorariosBloqueados(id, data, slots || []);
+            const resultado = await BarbeiroService.salvarHorariosBloqueados(id, data, slots || [], motivos || [], req.usuario?.id);
             return res.json(resultado);
         } catch (error) {
             console.error("Erro ao salvar horários bloqueados:", error);
@@ -89,6 +89,52 @@ class BarbeiroController {
             return res.status(error.status || 500).json({
                 erro: error.message || "Erro ao buscar horários bloqueados"
             });
+        }
+    }
+
+    static async listarBloqueiosParaAdmin(req, res) {
+        try {
+            const dados = await BarbeiroService.listarBloqueiosParaAdmin();
+            return res.json(dados);
+        } catch (error) {
+            return res.status(500).json({ erro: error.message || "Erro ao listar horários bloqueados" });
+        }
+    }
+
+    static async listarNotificacoesHorarios(req, res) {
+        try {
+            const notificacoes = await BarbeiroService.listarNotificacoesHorarios(req.query.naoLidas === "true");
+            return res.json({ notificacoes });
+        } catch (error) {
+            return res.status(500).json({ erro: error.message || "Erro ao listar notificações" });
+        }
+    }
+
+    static async marcarNotificacaoHorarioLida(req, res) {
+        try {
+            const notificacao = await BarbeiroService.marcarNotificacaoHorarioLida(req.params.id);
+            if (!notificacao) return res.status(404).json({ erro: "Notificação não encontrada" });
+            return res.json({ notificacao });
+        } catch (error) {
+            return res.status(500).json({ erro: error.message || "Erro ao atualizar notificação" });
+        }
+    }
+
+    static async listarBloqueiosRecorrentes(req, res) {
+        try {
+            const regras = await BarbeiroService.listarBloqueiosRecorrentes(req.params.id, req.usuario?.id);
+            return res.json({ regras });
+        } catch (error) {
+            return res.status(error.status || 500).json({ erro: error.message || "Erro ao buscar regras recorrentes" });
+        }
+    }
+
+    static async salvarBloqueiosRecorrentes(req, res) {
+        try {
+            const regras = await BarbeiroService.salvarBloqueiosRecorrentes(req.params.id, req.body.regras, req.usuario?.id);
+            return res.json({ mensagem: "Regras recorrentes salvas", regras });
+        } catch (error) {
+            return res.status(error.status || 500).json({ erro: error.message || "Erro ao salvar regras recorrentes" });
         }
     }
 }

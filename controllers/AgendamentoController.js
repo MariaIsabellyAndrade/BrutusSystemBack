@@ -195,6 +195,16 @@ static async webhook(req, res) {
     }
 }
 
+    static async concluirAgendamento(req, res) {
+        try {
+            const { tipo, id: usuarioId } = req.usuario;
+            const resultado = await AgendamentoService.concluirAgendamento(req.params.id, usuarioId, tipo);
+            return res.status(200).json(resultado);
+        } catch (error) {
+            return res.status(error.status || 500).json({ erro: error.message || "Erro ao concluir atendimento" });
+        }
+    }
+
     static async cancelarAgendamento(req, res) {
         try {
             const { id } = req.params;
