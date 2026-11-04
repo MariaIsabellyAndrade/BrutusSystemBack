@@ -1,4 +1,7 @@
 import Barbeiro from "../models/Barbeiro.js";
+import AgendaServSchema from "../models/AgendaServSchema.js";
+import AgendamentoSchema from "../models/AgendamentoSchema.js";
+import BarbeiroSchema from "../models/BarbeiroSchema.js";
 import Usuario from "../models/Usuario.js";
 import bcrypt from "bcrypt";
 import NotificacaoHorario from "../models/NotificacaoHorarioSchema.js";
@@ -70,6 +73,68 @@ class BarbeiroService {
 
     async buscarTodos() {
         return await Barbeiro.findAll();
+    }
+
+    async listarVisiveis(usuario) {
+        if (usuario?.tipo === "ADMIN") return BarbeiroSchema.find().lean();
+        if (usuario?.tipo === "BARBEIRO") return BarbeiroSchema.find({ Usuario: usuario.id }).select("nome sobrenome foto ativo").lean();
+        return BarbeiroSchema.find({ ativo: true }).select("nome sobrenome foto ativo").lean();
+    }
+
+    async atualizarMeuPerfil(usuarioId, dados) {
+        const barbeiro = await BarbeiroSchema.findOne({ Usuario: usuarioId });
+        if (!barbeiro) throw { status: 404, message: "Perfil de barbeiro não encontrado" };
+
+        const nome = String(dados.nome || "").trim();
+        const sobrenome = String(dados.sobrenome || "").trim();
+        const telefone = String(dados.telefone || "").trim();
+        const email = String(dados.email || "").trim().toLowerCase();
+        if (!nome || !sobrenome || !telefone || !email) {
+            throw { status: 400, message: "Preencha nome, sobrenome, telefone e e-mail" };
+        }
+        if (nome.length > 80 || sobrenome.length > 100 || telefone.length > 20 || email.length > 150 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            throw { status: 400, message: "Confira os dados informados" };
+        }
+
+        const usuario = await Usuario.findById(usuarioId);
+        if (!usuario) throw { status: 404, message: "Usuário não encontrado" };
+        if (email !== usuario.email.toLowerCase()) {
+            const existente = await Usuario.findOne({ email });
+            if (existente && String(existente._id) !== String(usuario._id)) {
+                throw { status: 409, message: "Este e-mail já está em uso" };
+            }
+            usuario.email = email;
+            await usuario.save();
+        }
+
+        barbeiro.nome = nome;
+        barbeiro.sobrenome = sobrenome;
+        barbeiro.telefone = telefone;
+        await barbeiro.save();
+        return { nome, sobrenome, telefone, email, foto: barbeiro.foto, dataAdmissao: barbeiro.dataAdmissao, ativo: barbeiro.ativo };
+    }
+
+    async buscarInicioBarbeiro(usuarioId) {
+        const barbeiro = await BarbeiroSchema.findOne({ Usuario: usuarioId }).populate("Usuario", "email").lean();
+        if (!barbeiro) throw { status: 404, message: "Perfil de barbeiro não encontrado" };
+        const agora = new Date();
+        const inicio = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+        const fim = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
+        const agendamentos = await AgendamentoSchema.find({ Barbeiro: barbeiro._id, data: { $gte: inicio, $lt: fim } })
+            .populate("Cliente", "nome sobrenome telefone foto")
+            .sort({ hora: 1 }).lean();
+        const ids = agendamentos.map((item) => item._id);
+        const servicosAgendados = ids.length ? await AgendaServSchema.find({ Agendamento: { $in: ids } }).populate("Servico", "nome").lean() : [];
+        const porAgendamento = new Map();
+        for (const item of servicosAgendados) {
+            const chave = String(item.Agendamento);
+            if (!porAgendamento.has(chave)) porAgendamento.set(chave, []);
+            if (item.Servico) porAgendamento.get(chave).push({ nome: item.Servico.nome, valor: item.valorCobrado });
+        }
+        return {
+            barbeiro: { nome: barbeiro.nome, sobrenome: barbeiro.sobrenome, foto: barbeiro.foto, telefone: barbeiro.telefone, dataAdmissao: barbeiro.dataAdmissao, ativo: barbeiro.ativo, email: barbeiro.Usuario?.email || "" },
+            agendamentos: agendamentos.map((item) => ({ _id: item._id, hora: item.hora, data: item.data, status: item.status, valorTotal: item.valorTotal, cliente: item.Cliente ? { nome: item.Cliente.nome, sobrenome: item.Cliente.sobrenome, telefone: item.Cliente.telefone } : null, servicos: porAgendamento.get(String(item._id)) || [] }))
+        };
     }
 
     async atualizarBarbeiro(id, dados, nomeFoto) {

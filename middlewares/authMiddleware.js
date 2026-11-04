@@ -57,3 +57,8 @@ export const isAdmin = (req, res, next) => {
 
     next();
 };
+
+export const optionalAuthMiddleware = (req, res, next) => {
+    if (!req.headers.authorization) return next();
+    return authMiddleware(req, res, next);
+};

@@ -18,11 +18,29 @@ class BarbeiroController {
 
     static async getAllBarbeiro(req, res) {
         try {
-            const barbeiros = await BarbeiroService.buscarTodos();
+            const barbeiros = await BarbeiroService.listarVisiveis(req.usuario);
             return res.json(barbeiros);
         } catch (error) {
             console.error('Erro ao carregar os barbeiros:', error);
             return res.status(500).json({ message: 'Erro interno ao buscar barbeiros' });
+        }
+    }
+
+    static async atualizarMeuPerfil(req, res) {
+        try {
+            const barbeiro = await BarbeiroService.atualizarMeuPerfil(req.usuario.id, req.body || {});
+            return res.json({ barbeiro });
+        } catch (error) {
+            return res.status(error.status || 500).json({ erro: error.message || "Erro ao atualizar seu perfil" });
+        }
+    }
+
+    static async getInicioBarbeiro(req, res) {
+        try {
+            const dados = await BarbeiroService.buscarInicioBarbeiro(req.usuario.id);
+            return res.json(dados);
+        } catch (error) {
+            return res.status(error.status || 500).json({ erro: error.message || "Erro ao carregar início do barbeiro" });
         }
     }
 

@@ -23,8 +23,7 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT;
 
-//Conecta ao banco de dados MongoDB
-Database.connect();
+// O servidor HTTP só abre após a conexão com o MongoDB.
 
 
 //pasta com as imagens 
@@ -49,6 +48,13 @@ app.use(morganMiddleware);
 //Registrando rotas (endpoints)
 app.use(router);
 
-app.listen(port, () => {
-    console.log(`Servidor ativo rodando na porta ${port}`)
-});
+try {
+    await Database.connect();
+    app.listen(port, () => {
+        console.log(`Servidor ativo rodando na porta ${port}`);
+    });
+} catch (error) {
+    console.error("Servidor não iniciado: verifique se o MongoDB está disponível e se MONGODB_URI está correto.");
+    process.exitCode = 1;
+}
+

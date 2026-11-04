@@ -13,7 +13,7 @@ class Database{
             console.log('MongoDB conectado com sucesso!-----');
         } catch (error) {
             console.error('Erro ao conectar o MongoDB: ', error.message);
-            process.exit(1); //Finaliza a aplicação
+            throw error;
         }
     }
 
@@ -29,3 +29,4 @@ class Database{
 }
 
 export default Database;
+
